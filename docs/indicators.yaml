@@ -1,0 +1,305 @@
+# 指标规格 v1.0 — 机器可读事实源（P0 产出）
+# 基于公开资料交叉核对重建，非原书直引。所有 source_page 必须为 null。
+# 代码只允许从本文件的 params: 读取参数，禁止硬编码周期数字。
+
+meta:
+  spec_version: "1.0"
+  source_doc: "INDICATOR_SPEC.md"
+  human_doc: "docs/INDICATORS.md"
+  provenance: "公开资料交叉核对重建，非原书直引"
+  source_page_policy: "null for all entries; 禁止编造章节号/页码/书中原文"
+  generated_by: "WorkBuddy 代跑 P0（本机 Codex CLI 受执行环境沙箱限制，未能写文件）"
+  counts: { total: 21, A: 15, B: 4, C: 2 }
+
+# ===== 唯一参数入口 =====
+params:
+  ema_period: 13                 # 备选 26
+  macd_fast: 12                  # 备选 11
+  macd_slow: 26                  # 备选 25
+  macd_signal: 9                 # 备选 8
+  fi_ema: 2                      # 备选 13（中线）/ 1（原始值）
+  rsi_period: 14                 # 备选 7（二手资料称 7，无原书可证）
+  stoch_k: 13                    # 备选 14
+  stoch_d: 3                     # 备选 5
+  oversold: 30
+  overbought: 70
+  tf_high: "1w"
+  tf_mid: "1d"
+  tf_low: "1h"
+  tf_ratio: 5
+  breakout_offset_ticks: 1
+  risk_per_trade: 0.02
+  monthly_drawdown_limit: 0.06
+  profit_protect_ratio: 0.50
+
+sources:
+  S1: "https://cmtassociation.org/wp-content/uploads/2025/08/MTA04May.pdf"
+  S2: "https://www.marketsfn.com/book/trading-for-a-living"
+  S3: "https://forestbergen.com/portfolio-item/join-dr-alexander-elder-in-his-trading-room"
+  S4: "微信公号《以交易为生》全书指标梳理（二手整理，无可核验 URL）"
+  S5: "https://aloycwl.blogspot.com/2022/03/trading-for-living-alexander-elder-1993.html"
+  S6: "https://www.freqtrade.io/en/stable/plotting/"
+
+# ===== 系统规则 =====
+systems:
+  - id: SYS-01
+    name: "三重滤网 Triple Screen"
+    formula: "screen1(tf_high) -> screen2(tf_mid) -> screen3(tf_low)"
+    inputs: [open, high, low, close, volume]
+    rule: "三层全部为真才产生信号"
+    confidence: A
+    source_ids: [S1, S2]
+    source_quote: "In his first book, 'Trading for a Living,' Elder defined his Triple Screen Trading System."
+    source_page: null
+    status: implement
+  - id: SYS-02
+    name: "方向铁律"
+    formula: "direction==LONG -> allowed={LONG}; SHORT -> allowed={SHORT}; FLAT -> allowed={}"
+    inputs: [direction]
+    rule: "第1重方向为严格开关，逆势信号一律丢弃；EMA 走平不交易"
+    confidence: A
+    source_ids: [S1]
+    source_quote: "Screen one is strict filter: no exceptions."
+    source_page: null
+    status: implement
+  - id: SYS-03
+    name: "第1重 周线定方向"
+    formula: "ema_slope=EMA(close,13)-EMA(close,13).shift(1); hist_slope=macdhist-macdhist.shift(1); 两者同号定方向，冲突则 FLAT"
+    inputs: [close]
+    rule: "ema_slope>0 且 hist_slope>0 -> LONG；均<0 -> SHORT；否则 FLAT"
+    confidence: A
+    source_ids: [S1, S2]
+    source_quote: "Elder showed that a trader could use the slope of the two most recent bars on a MACD histogram to determine the trend."
+    source_page: null
+    status: implement
+  - id: SYS-04
+    name: "第2重 日线找逆势回调"
+    formula: "LONG -> oversold_or_bullish_divergence(mid); SHORT -> overbought_or_bearish_divergence(mid)"
+    inputs: [close, high, low, volume]
+    rule: "升势买超卖，跌势卖超买；只看顺势方向的 setup"
+    confidence: A
+    source_ids: [S1]
+    source_quote: "oscillator divergences are used to buy short-term weakness in uptrends, or to sell short-term strength in downtrends"
+    source_page: null
+    status: implement
+  - id: SYS-05
+    name: "第3重 盘中挂单择时"
+    formula: "buy_stop=high.shift(1)+offset; sell_stop=low.shift(1)-offset"
+    inputs: [high, low, close]
+    rule: "昨日高点上方挂 buy stop / 昨日低点下方挂 sell stop，突破才成交"
+    confidence: A
+    source_ids: [S1]
+    source_quote: "a buy stop order to catch an upside breakout by buying at the previous day's high"
+    source_page: null
+    status: implement
+
+# ===== 指标 =====
+indicators:
+  - id: IND-01
+    name: "EMA 指数移动平均"
+    formula: "EMA(close, n)"
+    params_ref: [ema_period]
+    inputs: [close]
+    layer: "trend/screen1"
+    rule: "斜率>0 多头；<0 空头；≈0 观望"
+    confidence: A
+    source_ids: [S1, S2]
+    source_quote: "A rising EMA confirms a bull market; a falling EMA confirms a bear market."
+    source_page: null
+    status: implement
+  - id: IND-02
+    name: "MACD 线 + 柱状图"
+    formula: "macd=EMA(close,fast)-EMA(close,slow); signal=EMA(macd,signal); hist=macd-signal"
+    params_ref: [macd_fast, macd_slow, macd_signal]
+    inputs: [close]
+    layer: "trend+oscillator/screen1+2"
+    rule: "hist 斜率转折，或 hist 与价格背离 -> 力量转折信号"
+    confidence: A
+    source_ids: [S1, S2]
+    source_quote: "The slope of the histogram — not its absolute level — is the primary signal."
+    source_page: null
+    status: implement
+  - id: IND-03
+    name: "Force Index 强力指数"
+    formula: "fi=(close-close.shift(1))*volume; out=EMA(fi, fi_ema)"
+    params_ref: [fi_ema]
+    inputs: [close, volume]
+    layer: "oscillator/screen2"
+    rule: "out<0 且价格底背离 -> 买；out>0 且顶背离 -> 卖"
+    confidence: A
+    source_ids: [S1, S2]
+    source_quote: "Force Index is calculated by subtracting yesterday's close from today's close and multiplying that by today's volume."
+    source_page: null
+    status: implement
+  - id: IND-04
+    name: "Elder-Ray 埃尔德射线"
+    formula: "bull=high-EMA(close,13); bear=low-EMA(close,13)"
+    params_ref: [ema_period]
+    inputs: [high, low, close]
+    layer: "oscillator/screen2"
+    rule: "买: close>ema13 & bear<0 & bear>bear.shift(1) & bull 创新高；卖镜像；止损前一日低点"
+    confidence: A
+    source_ids: [S1, S2]
+    source_quote: "Elder Ray consists of two measures - Bull Power and Bear Power."
+    source_page: null
+    status: implement
+  - id: IND-05
+    name: "Stochastic K/D"
+    formula: "K=100*(close-LLV(low,k))/(HHV(high,k)-LLV(low,k)); D=SMA(K,d)"
+    params_ref: [stoch_k, stoch_d, oversold, overbought]
+    inputs: [high, low, close]
+    layer: "oscillator/screen2"
+    rule: "升势 K 跌破 30 后上穿 30 -> 买；跌势镜像。噪音多，优先级低于 IND-03"
+    confidence: A
+    source_ids: [S1]
+    source_quote: "Elder suggests Force Index (2-day EMA), Elder-Ray (bull/bear power), or 13-day Stochastic."
+    source_page: null
+    status: implement
+  - id: IND-06
+    name: "RSI 相对强弱"
+    formula: "Wilder RSI(close, n)"
+    params_ref: [rsi_period]
+    inputs: [close]
+    layer: "oscillator/screen2"
+    rule: "看背离与超买超卖；禁止单独逆势抄底摸顶"
+    confidence: A          # 公式 A；周期参数 B（二手称 7）
+    source_ids: [S2, S5]
+    source_quote: "Oscillators: Stochastic, rate of change, ... relative strength indicator, elder-ray, force index"
+    source_page: null
+    status: implement
+    note: "周期默认 14；二手资料称 7，无原书可证，界面可切"
+  - id: IND-07
+    name: "Williams %R"
+    formula: "WR=-100*(HHV(high,n)-close)/(HHV(high,n)-LLV(low,n))"
+    params_ref: []
+    inputs: [high, low, close]
+    layer: "oscillator/screen2"
+    rule: "超买超卖 + 背离"
+    confidence: B
+    source_ids: [S5]
+    source_quote: null
+    source_page: null
+    status: optional
+    note: "unverified：无可核验短引，参数待核对"
+  - id: IND-08
+    name: "背离分类 A/B/C"
+    formula: "A: price 新极值 & indicator 未新极值；B: 双顶/底 + indicator 走弱；C: indicator 持平"
+    params_ref: []
+    inputs: [price, indicator]
+    layer: "oscillator/all"
+    rule: "A 类为最强反转信号"
+    confidence: B
+    source_ids: [S5]
+    source_quote: "Class A: when price reaches a new high/low, an oscillator reaches a lower high/higher bottom"
+    source_page: null
+    status: optional
+  - id: IND-09
+    name: "成交量 Volume"
+    formula: "volume"
+    params_ref: []
+    inputs: [volume]
+    layer: "volume/verify"
+    rule: "放量上涨/缩量回调为健康；价格新高而量萎缩为乏力"
+    confidence: A
+    source_ids: [S1, S4]
+    source_quote: "If the close is higher today than yesterday, the force is positive."
+    source_page: null
+    status: implement
+  - id: IND-10
+    name: "OBV 能量潮"
+    formula: "OBV_t=OBV_{t-1} +/- volume_t"
+    params_ref: []
+    inputs: [close, volume]
+    layer: "volume/verify"
+    rule: "价格新高 OBV 未新高 -> 动能减弱"
+    confidence: B
+    source_ids: [S4, S5]
+    source_quote: null
+    source_page: null
+    status: optional
+    note: "unverified"
+  - id: IND-11
+    name: "A/D、Herrick Payoff Index"
+    formula: null
+    params_ref: []
+    inputs: []
+    layer: "volume/verify"
+    rule: "验证量价力量"
+    confidence: C
+    source_ids: [S5]
+    source_quote: null
+    source_page: null
+    status: skip
+  - id: IND-12
+    name: "趋势线、支撑/阻力"
+    formula: null
+    params_ref: []
+    inputs: [high, low, close]
+    layer: "aux/all"
+    rule: "触碰越多越有效；假突破用背离识别"
+    confidence: B
+    source_ids: [S5]
+    source_quote: null
+    source_page: null
+    status: optional
+    note: "unverified"
+  - id: IND-13
+    name: "缺口、K线反转形态、头肩/双顶双底"
+    formula: null
+    params_ref: []
+    inputs: [open, high, low, close]
+    layer: "aux/screen3"
+    rule: "共振确认，不单独开仓"
+    confidence: C
+    source_ids: [S4]
+    source_quote: null
+    source_page: null
+    status: skip
+
+# ===== 风控 =====
+risk:
+  - id: RISK-01
+    name: "2% 法则"
+    formula: "max_risk=equity*risk_per_trade; size=max_risk/(entry-stop)"
+    params_ref: [risk_per_trade]
+    rule: "先定止损距离，再算仓位；顺序不能反"
+    confidence: A
+    source_ids: [S2]
+    source_quote: "Never risk more than 2% of total trading capital on a single trade."
+    source_page: null
+    status: implement
+  - id: RISK-02
+    name: "6% 法则"
+    formula: "if (month_open-equity) > monthly_drawdown_limit*month_open: halt(rest_of_month)"
+    params_ref: [monthly_drawdown_limit]
+    rule: "月度回撤超限则当月停止交易"
+    confidence: A
+    source_ids: [S2]
+    source_quote: "If the account falls 6% below its monthly opening balance, stop trading for the rest of that month."
+    source_page: null
+    status: implement
+  - id: RISK-03
+    name: "50% 法则"
+    formula: "stop=entry+profit_protect_ratio*(best_price-entry)"
+    params_ref: [profit_protect_ratio]
+    rule: "有浮盈后把止损移到保住一半利润的位置"
+    confidence: A
+    source_ids: [S2]
+    source_quote: "the stop is moved to a level that protects at least half the paper gain"
+    source_page: null
+    status: implement
+
+# ===== 不实现 =====
+excluded:
+  - {name: "Impulse System", reason: "S1 明确属《Come into my Trading Room》(2002)，非本书"}
+  - {name: "SafeZone / Chandelier / Market Thermometer / AutoEnvelope", reason: "S3 显示出自覆盖两本书的 MetaStock 插件；S4 混入本书清单"}
+  - {name: "ATR(13) 止损基准 / Envelope(20,±2.5%) / 布林带 / Keltner 作为第3重主力", reason: "与 S1 复述的原版第3重冲突，无原书可判定"}
+  - {name: "通道触轨 + K线反转形态作为第3重", reason: "S4 版本，采用 SYS-05 替代"}
+  - {name: "任何 ML / LLM 预测", reason: "与本书方法论无关"}
+
+# ===== 待用户决策 =====
+open_questions:
+  - "RSI 周期取 14 还是 7（无原书可证）"
+  - "optional 四项 IND-07/08/10/12 是否实现"
+  - "目标市场、数据源与回测区间"
+  - "将来拿到书 -> 跑 prompts/P0-R.txt 回填页码与原文"
