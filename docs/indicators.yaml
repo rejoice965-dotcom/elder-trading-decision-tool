@@ -32,6 +32,19 @@ params:
   monthly_drawdown_limit: 0.06
   profit_protect_ratio: 0.50
 
+# ===== A 股市场配置（2026-11-20 用户确认目标市场）=====
+market:
+  name: "A-share"
+  data_source: "akshare"        # 备选 baostock / tushare / csv
+  adjust: "qfq"                 # 前复权；hfq / none 备选。回测口径须在 P2 计划里确认
+  symbol_format: "600519.SH"    # 6 位代码 + 交易所后缀
+  t_plus_1: true
+  board_limit_pct: 0.10         # 主板；创业板/科创板 0.20、北交所 0.30、ST 0.05
+  min_lot: 100
+  trading_calendar: "SSE"
+  intraday_bars_per_day: 4      # 每日 4 根 60 分钟 K
+  skip_suspended: true
+
 sources:
   S1: "https://cmtassociation.org/wp-content/uploads/2025/08/MTA04May.pdf"
   S2: "https://www.marketsfn.com/book/trading-for-a-living"

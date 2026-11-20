@@ -4,6 +4,15 @@
 
 架构要求：指标与信号引擎放在框架无关的独立包（如 elder_indicators/），只依赖 pandas/numpy，不 import 框架专属 API，为后续把展示层换成自建 lightweight-charts 前端（升级路线 2）留接口。
 
+目标市场已定为 A 股（沪深），不是加密货币。按 AGENTS.md 的 A 股规则与 docs/indicators.yaml 的 market: 配置执行：
+- 数据层用 akshare（默认）或 baostock 取 A 股日线/周线/60 分钟线，代码格式 600519.SH；处理复权、沪深交易日历、停牌日跳过、复牌跳空。
+- 三重滤网周期映射：第 1 重周线、第 2 重日线、第 3 重 60 分钟线（每日 4 根）。
+
+注意：P1 选定的 Jesse 是加密框架，撮合规则（7x24、无涨跌停、无 T+1）与 A 股不符，回测绩效不可信；指标计算与买卖点标注放在独立模块，不受影响。因此在第 1 步的「实现计划」里必须给出二选一对比并给推荐、等我拍板后再写代码：
+  方案 1（改动小）：保留 Jesse，自己写 A 股数据适配层把 OHLCV 喂给独立指标引擎，Jesse 只做调度与图表展示；
+  方案 2（更彻底）：切换到 A 股原生框架（rqalpha / vnpy / pybroker）—— 这需要增量重跑 P1 复核。
+计划里还要明确复权口径（前复权/后复权）并让我确认。
+
 读取 docs/INDICATORS.md 与 docs/indicators.yaml：只实现 status=implement 的条目；optional/unverified/skip 一律跳过并在 README 的"未实现清单"列出。
 
 1. 先输出实现计划（目录结构、每个指标放哪、如何接到底座策略接口、测试策略），等我确认后再写代码。

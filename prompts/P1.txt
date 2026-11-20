@@ -12,6 +12,7 @@
    C. 能把买卖信号标到 K 线上（箭头/marker/交易点表）。
    D. 许可证允许二次开发，近 12 个月有提交，未 archived。特别区分：GPL-3.0 有传染性（fork 后衍生作品通常须同样开源）；路线 1 是 fork 框架，若计划闭源/商用，报告里必须逐个标出许可证并说明影响，优先推荐 MIT / Apache-2.0。
    E. 指标参数可外部配置，不写死。
+   F. 目标市场为 A 股：原生支持 A 股数据源，或能以可控成本接入 akshare / baostock / 本地 CSV；把「A 股适配成本」纳入评分。
 3. 每个候选取真实数据：star 数、最近 push、license、主语言、archived 状态、issue/PR 活跃度。
 4. 注意 Freqtrade 已弃用 plot-dataframe、推荐 FreqUI，不要基于废弃能力打分。
 5. 输出 PROJECT_SELECTION.md：检索命令、>=5 个候选对比表、7 维度打分 1-5、加权总分、最终选 1 个 + 200 字理由、淘汰项及原因。

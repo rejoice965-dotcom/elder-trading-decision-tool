@@ -92,7 +92,7 @@ codex exec --sandbox workspace-write "$(cat prompts/P4.txt)"   # 验收
 
 据此已同步修改 `AGENTS.md`、`prompts/P1.txt`、`prompts/P2.txt`：P1 不再输出三条备选，改为主攻策略/回测框架方向并给出具体仓库的 clone 路径与策略文件位置；P2 增加「独立指标模块」的架构约束。
 
-**P1 跑完后还有一层决策**：具体用哪个仓库（freqtrade / backtrader / …）由真实调研决定，那时再确认一次即可。仍待定：RSI 周期（14 还是二手资料的 7）、目标市场/数据源与回测区间。
+**P1 跑完后还有一层决策**：具体用哪个仓库由真实调研决定（已定 Jesse，见 `PROJECT_SELECTION.md`）。仍待定：RSI 周期（14 还是二手资料的 7）、回测区间；**目标市场已定为 A 股**（见 1.4 节）。
 
 ### 1.3 curl 检索实测（2026-11-20，已跑通）
 
@@ -110,6 +110,22 @@ codex exec --sandbox workspace-write "$(cat prompts/P4.txt)"   # 验收
 ⚠️ **许可证提醒（路线 1 是 fork，影响更大）**：freqtrade / OctoBot 是 **GPL-3.0**，fork 后衍生作品通常也要按 GPL 开源；若计划闭源或商用，优先评估 **jesse（MIT）**、**hummingbot / investing-algorithm-framework（Apache-2.0）**。P1 已要求在报告里逐条标出许可证并说明对「自有产品」的影响。
 
 > 这只是**原始检索快照**，不是选型结论。打分、多周期能力证据、clone 路径仍由 Codex 在 P1 里完成。
+
+### 1.4 目标市场确定为 A 股（2026-11-20 23:00 用户确认）
+
+用户明确要跑 **A 股（沪深）**，不是加密货币。这是选型的根本输入，已做以下改动：
+
+- `AGENTS.md` 写入 A 股规则：数据源 akshare/baostock、复权口径、T+1、涨跌停、100 股手数、沪深交易日历、停牌、三重滤网周期映射（周/日/60 分钟）。
+- `docs/indicators.yaml` 新增 `market:` 配置节；铁律 3 改为「参数从 `params:` 与 `market:` 读取」。
+- `prompts/P2.txt` 加 A 股数据适配层与二选一方案决策；`P3.txt` 加 A 股界面元素；`P4.txt` 加 A 股专项验收；`P1.txt` 新增硬约束 F「A 股数据源适配」，供任何后续重跑使用。
+- `PROJECT_SELECTION.md` 末尾追加了 A 股影响补充说明（原调研数据与结论保留不改）。
+- **本文件下方的 P2/P3/P4 代码块是初始快照**，实际执行一律以 `prompts/*.txt` 为准（已含 A 股约束）。
+
+⚠️ **必须知道的局限**：P1 选定的 Jesse 是加密货币框架，撮合按 7×24、无涨跌停、无 T+1 设计，**用它跑 A 股的回测绩效不可信**；但指标计算与买卖点标注在框架无关的独立模块里，不受影响。因此 P2 的「先交计划」阶段会给出二选一对比让你拍板：
+- **方案 1（改动小）**：保留 Jesse，自己写 A 股数据适配层（akshare → 独立指标引擎），Jesse 只做调度与图表；
+- **方案 2（更彻底）**：切换到 A 股原生框架（rqalpha / vnpy / pybroker），需增量重跑 P1 复核。
+
+想现在就换框架也可以，直接让 Codex 重跑 `prompts/P1.txt`（已含硬约束 F），我会同步更新底座引用。
 
 ---
 

@@ -190,3 +190,15 @@ Jesse 以 MIT 许可和活跃维护通过了可二次开发条件，策略可以
 - 数据适配：Jesse candle 数组在策略边界转换为 pandas OHLCV DataFrame，再传入独立指标函数。
 - P2 底座：必须引用 `/Users/kaixin/WorkBuddy/2026-11-20-21-16-17/jesse`，并把产品侧独立指标与测试留在 `codex-elder-trading` 项目中。P2 不应另选框架或重写 Jesse 的数据、回测、风控层。
 - 未来函数检查：Jesse README 宣称多周期支持不带 look-ahead bias，但在本次检查的 README、策略 API 与图表文档中未找到独立的 `lookahead-analysis` 审计工具。结论是**没有确认自带同类诊断命令**。Freqtrade 明确有 `freqtrade lookahead-analysis`，可作为工具能力对照；P2/P4 对 Jesse 策略须通过只使用已收盘 candles 的代码审查和前后数据扰动测试验证。
+
+---
+
+## 补充：目标市场确定为 A 股（WorkBuddy 追加，2026-11-20 23:00）
+
+用户在 P1 完成后确认目标市场是 **A 股（沪深）**，不是加密货币。本报告选型时该变量未纳入，故补记其影响；**上方原始调研数据与结论保留不改**。
+
+- Jesse 是加密货币框架，`get_candles` 对接加密交易所，A 股数据源需额外适配层（akshare / baostock / 本地 CSV）。
+- Jesse 的撮合规则（7×24 连续交易、无涨跌停、无 T+1）与 A 股不符，**用它计算的回测绩效不可信**；本产品的指标计算与买卖点标注放在框架无关的独立模块中，不受影响。
+- 因此 P2 计划阶段须给出二选一对比并由用户拍板：① 保留 Jesse + 自建 A 股数据适配层；② 切换到 A 股原生框架（rqalpha / vnpy / pybroker），需增量重跑 P1。
+- 硬约束 F「A 股数据源适配」已加入 `prompts/P1.txt`，供任何后续重跑使用。
+- A 股规则详见 `AGENTS.md`「目标市场：A 股」节与 `docs/indicators.yaml` 的 `market:` 配置。
