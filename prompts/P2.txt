@@ -1,6 +1,6 @@
-承接 P0/P1。已定技术路线：路线 1「最小改动原型」—— 只在选定框架内新增策略文件 + 独立指标模块 + 配置，不重写框架的数据下载/回测/风控层，白拿其未来函数检查工具。
+承接 P0/P1。已定技术路线：路线 1「最小改动原型」—— 只在选定框架内新增策略适配文件 + 独立指标模块 + 配置，不重写框架的数据/回测层。注意：VN.py 没有类似 freqtrade lookahead-analysis 的独立未来函数审计工具，P2/P4 靠代码审查与未来数据扰动测试验证。
 
-先读取 PROJECT_SELECTION.md，取其中"最终选定"的仓库与本地路径作为底座；若该文件不存在或没有明确结论，停下来问我，不要自己假设。
+**底座已由用户确认：VN.py**（vnpy/vnpy + vnpy_ctastrategy + vnpy_ctabacktester，MIT）。落地信息见 PROJECT_SELECTION.md（clone 命令、本地目录、策略适配文件路径、Python 3.10+ 独立环境要求）。不要再重新选型、不要再提出方案对比、不要停下来问底座。
 
 架构要求：指标与信号引擎放在框架无关的独立包（如 elder_indicators/），只依赖 pandas/numpy，不 import 框架专属 API，为后续把展示层换成自建 lightweight-charts 前端（升级路线 2）留接口。
 
@@ -9,19 +9,17 @@
 - 三重滤网周期映射：第 1 重周线、第 2 重日线、第 3 重 60 分钟线（每日 4 根）。
 - 边界（重要，别误读）：**单元测试不联网**——用本地手工构造的 OHLCV 做数值断言，保证期望值固定、可复现、离线可跑、不把数据源故障混进公式测试。**真实 A 股数据加载必须联网实现**，作为独立的端到端步骤：由 market_data/provider.py 调 akshare/baostock 取数，缓存到本地 CSV/parquet，指标引擎读缓存回放；端到端验证要单独给命令和真实输出。禁止把「不联网」理解为整个项目不接数据源。
 
-注意：P1 选定的 Jesse 是加密框架，撮合规则（7x24、无涨跌停、无 T+1）与 A 股不符，回测绩效不可信；指标计算与买卖点标注放在独立模块，不受影响。因此在第 1 步的「实现计划」里必须给出二选一对比并给推荐、等我拍板后再写代码：
-  方案 1（改动小）：保留 Jesse，自己写 A 股数据适配层把 OHLCV 喂给独立指标引擎，Jesse 只做调度与图表展示；
-  方案 2（更彻底）：切换到 A 股原生框架（rqalpha / vnpy / pybroker）—— 这需要增量重跑 P1 复核。
-计划里还要明确复权口径（前复权/后复权）并让我确认。
+已完成的决策（不要重开）：目标市场 A 股 → 采用方案 2 切换 A 股原生框架 → 增量复核后选定 VN.py。复权口径已确认：指标计算用前复权 qfq，成交价与涨跌停校验用未复权行情；复牌首根 60 分钟 K 收盘前不产生信号。
+实现结构按已审阅通过的 P2 计划：elder_indicators/（indicators / signals / risk / market_rules）、market_data/（provider / bars）、strategy_adapters/vnpy_elder_triple_screen.py、tests/；产品代码全部留在 codex-elder-trading，vnpy 与两个扩展仅作依赖。
 
 读取 docs/INDICATORS.md 与 docs/indicators.yaml：只实现 status=implement 的条目；optional/unverified/skip 一律跳过并在 README 的"未实现清单"列出。
 
-1. 先输出实现计划（目录结构、每个指标放哪、如何接到底座策略接口、测试策略），等我确认后再写代码。
-2. 每个指标实现为纯函数 fn(df: pd.DataFrame, **params) -> pd.Series/DataFrame，只用 pandas/numpy；不读网络、不绘图、不依赖 UI。参数一律从 docs/indicators.yaml 的 params 读取，禁止硬编码、禁止自行调参。
+1. 实现计划已在上一轮审阅通过，按上述结构直接开始写代码；若发现需要偏离计划的结构性变更，先停下来说明再改。
+2. 每个指标实现为纯函数 fn(df: pd.DataFrame, **params) -> pd.Series/DataFrame，只用 pandas/numpy；不读网络、不绘图、不依赖 UI。参数一律从 docs/indicators.yaml 的 params: 与 market: 读取，禁止硬编码、禁止自行调参。
 3. 每个指标配单元测试：5~10 行手工构造 OHLCV，把期望值手算出来做数值断言；覆盖 EMA 预热期、成交量缺失、NaN 边界、常数价格序列。
 4. 三重滤网引擎：第 1 重定方向 -> 第 2 重找逆势回调 -> 第 3 重突破挂单。第 1 重方向是严格开关，逆势信号一律丢弃。
 5. 风控模块：2% 法则仓位（先定止损距离再算仓位）、6% 法则月度熔断、50% 法则移动止损。
 6. 信号表每行必须携带：timestamp, symbol, side, price, rule_id, indicator_values(dict), source_url, source_quote, confidence, source_page(null)。缺来源的信号不许生成。
 7. 严禁：未收盘 K 线、shift(-n)/任何未来数据、逐行 for 循环算指标、把二手参数当原著参数、引入机器学习预测、伪造书页码。
 
-完成后运行 pytest 并贴真实输出；列出实现/跳过了哪些 id 及原因。
+完成后：运行 pytest 并贴真实输出；给出未来数据扰动测试结果；端到端数据加载单独给命令和真实输出；git commit；列出实现/跳过了哪些 id 及原因。
