@@ -86,6 +86,31 @@ codex exec --sandbox workspace-write "$(cat prompts/P4.txt)"   # 验收
 2. 或用 Codex IDE 插件 / 桌面端，它们不走 CLI 的 seatbelt 沙箱；
 3. 或检查 `~/.codex/config.toml` 的 `sandbox_mode` / `approval_policy` 设置。
 
+### 1.2 已定技术路线（2026-11-20 用户拍板）：路线 1 · 最小改动原型
+
+用户在三条备选里选了**路线 1「原型起步」**：clone 选中的框架，只新增策略文件 + 独立指标模块 + 配置；买卖点用框架自带 UI 或 `setMarkers`；**不重写**框架的数据/回测/风控层，白拿其未来函数检查工具。指标与信号引擎写成框架无关模块，验证通过后换自建前端即可升级为完整自有软件。
+
+据此已同步修改 `AGENTS.md`、`prompts/P1.txt`、`prompts/P2.txt`：P1 不再输出三条备选，改为主攻策略/回测框架方向并给出具体仓库的 clone 路径与策略文件位置；P2 增加「独立指标模块」的架构约束。
+
+**P1 跑完后还有一层决策**：具体用哪个仓库（freqtrade / backtrader / …）由真实调研决定，那时再确认一次即可。仍待定：RSI 周期（14 还是二手资料的 7）、目标市场/数据源与回测区间。
+
+### 1.3 curl 检索实测（2026-11-20，已跑通）
+
+`gh` 未装，但第 5 节的 `curl` 命令**真实可用**，返回 12 个仓库，原始 JSON 已存 `docs/github-candidates.json`：
+
+| 仓库 | star | 最近 push | 许可 |
+|---|---|---|---|
+| freqtrade/freqtrade | 57,098 | 2026-11-19 | **GPL-3.0** |
+| ccxt/ccxt | 44,930 | 2026-11-20 | MIT |
+| hummingbot/hummingbot | 21,306 | 2026-11-20 | Apache-2.0 |
+| jesse-ai/jesse | 8,823 | 2026-11-17 | **MIT** |
+| Drakkar-Software/OctoBot | 6,962 | 2026-11-19 | GPL-3.0 |
+| coding-kitties/investing-algorithm-framework | 2,251 | 2026-11-17 | Apache-2.0 |
+
+⚠️ **许可证提醒（路线 1 是 fork，影响更大）**：freqtrade / OctoBot 是 **GPL-3.0**，fork 后衍生作品通常也要按 GPL 开源；若计划闭源或商用，优先评估 **jesse（MIT）**、**hummingbot / investing-algorithm-framework（Apache-2.0）**。P1 已要求在报告里逐条标出许可证并说明对「自有产品」的影响。
+
+> 这只是**原始检索快照**，不是选型结论。打分、多周期能力证据、clone 路径仍由 Codex 在 P1 里完成。
+
 ---
 
 ## 2. 选型硬约束（让 Codex 自己搜，别替它定死）
@@ -93,13 +118,16 @@ codex exec --sandbox workspace-write "$(cat prompts/P4.txt)"   # 验收
 **不满足 A 直接淘汰**：
 - **A. 必须支持多时间框架**（周线 / 日线 / 小时线同时参与一个信号）——三重滤网没这个等于没实现。要求到仓库文档/源码找证据（freqtrade 的 `@informative` / `merge_informative_pair`、backtrader 的多 data feed），把证据路径写进报告。
 - **B. 允许自定义指标公式**；**C. 能把买卖信号标到 K 线上**；**D. 许可证允许二次开发、近 12 个月有提交、未 archived**。
+  - 路线 1 是 fork，需特别区分 GPL-3.0（传染性）与 MIT / Apache-2.0，详见 1.3 节。
 - **E（Mode B 新增）：参数可外部配置**，不能把周期写死在策略里。
 
 三类方向各找 2~3 个：策略/回测框架（freqtrade、backtrader、vectorbt、jesse、vn.py）、图表界面（lightweight-charts 系、FreqUI）、指标计算库（TA-Lib、pandas-ta、technical）。
 
 ⚠️ 已核实：Freqtrade 官方把 `plot-dataframe` / `plot-profit` 标记为 **deprecated**、推荐 FreqUI（https://www.freqtrade.io/en/stable/plotting/）。别在废弃命令上花时间。
 
-**打分维度（1~5）**：多周期 / 自定义指标 / 买卖点可视化 / 回测 / 活跃度 / 二次开发成本 / 与 Python+pandas 契合 → 加权总分 → 选 1 个 + 200 字理由 + 淘汰原因 + 3 条备选路线让我拍板。
+**打分维度（1~5）**：多周期 / 自定义指标 / 买卖点可视化 / 回测 / 活跃度 / 二次开发成本 / 与 Python+pandas 契合 / **最小改动成本（路线 1 重点）** → 加权总分 → 选 1 个 + 200 字理由 + 淘汰原因。
+
+> 路线 1 已定，P1 不再输出三条备选；改为给出落地信息（clone 命令、本地目录、策略文件路径、P2 该引用的底座）。
 
 ---
 
@@ -142,21 +170,21 @@ codex exec --sandbox workspace-write "$(cat prompts/P4.txt)"   # 验收
 ### P1 — 在 GitHub 找契合的底座并给出证据
 
 ```
-目标：为产品选一个可二次开发的开源底座，调研必须可复现。
+目标：为产品选一个可二次开发的开源底座，调研必须可复现。已定技术路线：路线 1「最小改动原型」（clone 框架 + 策略文件 + 独立指标模块，不再给三条备选让用户选）。
 
 0. 先检查 gh CLI 是否可用（command -v gh）。不可用则改用 curl 调 GitHub REST API，命令见 CODEX_PROMPTS.md 第 5 节。不许凭记忆推荐仓库。
 
-1. 真实检索 GitHub，至少覆盖三个方向：策略/回测框架、图表界面库、指标计算库。把检索命令原文和返回结果贴进报告。
+1. 真实检索 GitHub，主攻「策略/回测框架」方向（freqtrade / backtrader / vectorbt / jesse / vn.py）；图表界面库与指标计算库只作为买卖点渲染、指标计算的补充依赖评估。把检索命令原文和返回结果贴进报告。
 2. 硬约束（不满足直接淘汰并写明原因）：
    A. 支持多时间框架（周/日/小时同时参与一个信号）——到仓库文档/源码找证据并写路径（freqtrade 的 @informative / merge_informative_pair，backtrader 的多 data feed）。
    B. 允许自定义指标公式。
    C. 能把买卖信号标到 K 线上（箭头/marker/交易点表）。
-   D. 许可证允许二次开发，近 12 个月有提交，未 archived。
+   D. 许可证允许二次开发，近 12 个月有提交，未 archived。特别区分：GPL-3.0 有传染性（fork 后衍生作品通常须同样开源），路线 1 是 fork，报告里必须逐个标出许可证并说明对自有产品的影响，优先 MIT / Apache-2.0。
    E. 指标参数可外部配置，不写死。
 3. 每个候选取真实数据：star 数、最近 push、license、主语言、archived 状态、issue/PR 活跃度。
 4. 注意 Freqtrade 已弃用 plot-dataframe、推荐 FreqUI，不要基于废弃能力打分。
 5. 输出 PROJECT_SELECTION.md：检索命令、>=5 个候选对比表、7 维度打分 1-5、加权总分、最终选 1 个 + 200 字理由、淘汰项及原因。
-6. 最后给 3 条备选路线（最小改动原型 / 完整可运行软件 / 纯前端展示）让我拍板；并告诉我选定后 clone 到哪个目录、P2 的"底座 ="该填什么。
+6. 路线已定，不要再给三条备选。改为输出「落地信息」：最终选定仓库的完整 clone 命令、clone 到哪个本地目录、策略文件应放在该框架的哪个路径、配置怎么改、以及 P2 该引用哪个底座路径。并确认该框架是否自带未来函数检查工具（如 freqtrade 的 lookahead-analysis）。
 
 本阶段不要 clone、不要改代码，先交报告。
 ```

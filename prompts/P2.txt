@@ -1,4 +1,8 @@
-承接 P0/P1。先读取 PROJECT_SELECTION.md，取其中"最终选定"的仓库与本地路径作为底座；若该文件不存在或没有明确结论，停下来问我，不要自己假设。
+承接 P0/P1。已定技术路线：路线 1「最小改动原型」—— 只在选定框架内新增策略文件 + 独立指标模块 + 配置，不重写框架的数据下载/回测/风控层，白拿其未来函数检查工具。
+
+先读取 PROJECT_SELECTION.md，取其中"最终选定"的仓库与本地路径作为底座；若该文件不存在或没有明确结论，停下来问我，不要自己假设。
+
+架构要求：指标与信号引擎放在框架无关的独立包（如 elder_indicators/），只依赖 pandas/numpy，不 import 框架专属 API，为后续把展示层换成自建 lightweight-charts 前端（升级路线 2）留接口。
 
 读取 docs/INDICATORS.md 与 docs/indicators.yaml：只实现 status=implement 的条目；optional/unverified/skip 一律跳过并在 README 的"未实现清单"列出。
 
