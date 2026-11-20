@@ -1,0 +1,232 @@
+# 《以交易为生》交易软件 — Codex 提示词包（无电子书模式 / Mode B）
+
+**目标产品**：加载行情 → 按《以交易为生》(Alexander Elder, *Trading for a Living*) 的指标体系计算 → 在 K 线上标出买卖点 → 每个信号可追溯到依据来源。
+
+**当前模式：Mode B — 用户没有这本书的电子版。** 已据此改写全流程。
+
+---
+
+## 0. Mode B 的四条规则（最重要，先读）
+
+原方案 P0 是「从书的电子版逐条提取指标」。没有电子书时这一步会卡死，且 P2 里「只实现 confirmed 条目」会导致一个指标都实现不了。所以现在改为：
+
+| # | 规则 |
+|---|---|
+| 1 | **事实源换成 `INDICATOR_SPEC.md`**（本包内，公开资料交叉核对规格 v1.0），由 P0 规范化为 `docs/INDICATORS.md`。不再要求从书提取。 |
+| 2 | **绝不伪造书中出处。** 用户没有书 → 禁止输出书页码、章节号，禁止写「书中原文」「原著写道」等表述，禁止编造引文。溯源锚点统一为：`source_url + source_quote(≤50字) + confidence(A/B/C)`；`source_page` 字段一律为 `null`。 |
+| 3 | **来源必须诚实标注**：每个信号/界面上都写明「依据：公开资料交叉核对，非原书直引」。规格文档顶部也要写这句话。 |
+| 4 | **所有参数可配置。** 没有书就没有唯一权威参数值（RSI 7 还是 14、Stochastic 周期、Force Index 用 2 日还是 13 日 EMA 都有分歧），因此参数一律从配置读取，默认值取规格表，禁止硬编码、禁止「按行业惯例」自行选定。 |
+
+> 将来若拿到书，跑 `prompts/P0-R.txt`（回填模式）一次性补页码与原文，把 confidence 升级为 `book-confirmed`。设计上已留好口子，现在不用管。
+
+**事实源层级**：`INDICATOR_SPEC.md`（人读，核对基准） → `docs/INDICATORS.md` + `docs/indicators.yaml`（P0 产出，机器可读，代码只认这个） → 代码。
+
+---
+
+## 1. 本机环境与启动方式（已实测）
+
+| 工具 | 状态 |
+|---|---|
+| `codex` CLI | ✅ 0.169.0，`codex exec` 非交互模式可用，会自动加载仓库根目录的 `AGENTS.md` |
+| `git` | ✅ 已装；`codex exec` 默认要求 git 仓库，本目录已 `git init` |
+| `python3` | ✅ 3.13 |
+| `gh` | ❌ **未安装** → P1 改用 `curl` 调 GitHub REST API（命令见第 5 节），提示词里已让 Codex 自动判断 |
+
+**在这个目录直接跑**（每条提示词都是独立 txt，不用手动复制）：
+
+```bash
+cd /Users/kaixin/WorkBuddy/2026-11-20-21-16-17/codex-elder-trading
+
+# 顺序：P0 与 P1 可并行/任意先后，但 P2 之前必须都完成
+codex exec --sandbox workspace-write "$(cat prompts/P0.txt)"     # 核定规格
+codex exec --sandbox workspace-write "$(cat prompts/P1.txt)"     # GitHub 选型
+codex exec --sandbox workspace-write "$(cat prompts/P2.txt)"     # 实现（自动读 PROJECT_SELECTION.md）
+codex exec --sandbox workspace-write "$(cat prompts/P3.txt)"     # 界面 + 买卖点
+codex exec --sandbox workspace-write "$(cat prompts/P4.txt)"     # 验收
+```
+
+- 若 Codex 报网络受限，把 `--sandbox workspace-write` 换成 `--sandbox danger-full-access`（仅在你确认时）。
+- 想看它最后说了什么，加 `-o /tmp/p0-summary.txt`。
+- 交互式用 `codex` 直接打开，粘贴 `prompts/P0.txt` 的内容即可。
+
+**五条实操**（决定成败）：
+1. 在**仓库根目录**启动 Codex，让它看到真实文件和真实报错。
+2. 每个阶段先让它**输出计划、等你确认再改代码**（P0 只写文档，可直接跑）。
+3. 铁律已写进 `AGENTS.md`，不用每条 prompt 重复贴；但遇到它想「按常见做法」补参数时，直接回：「查 docs/INDICATORS.md，查不到就标 todo 问我」。
+4. 每阶段结尾索要**证据**：pytest stdout、命令输出、CSV 样例、图、diff。不接受「已完成」。
+5. 每阶段一个 `git commit`，跑偏能回滚。
+
+---
+
+## 2. 选型硬约束（让 Codex 自己搜，别替它定死）
+
+**不满足 A 直接淘汰**：
+- **A. 必须支持多时间框架**（周线 / 日线 / 小时线同时参与一个信号）——三重滤网没这个等于没实现。要求到仓库文档/源码找证据（freqtrade 的 `@informative` / `merge_informative_pair`、backtrader 的多 data feed），把证据路径写进报告。
+- **B. 允许自定义指标公式**；**C. 能把买卖信号标到 K 线上**；**D. 许可证允许二次开发、近 12 个月有提交、未 archived**。
+- **E（Mode B 新增）：参数可外部配置**，不能把周期写死在策略里。
+
+三类方向各找 2~3 个：策略/回测框架（freqtrade、backtrader、vectorbt、jesse、vn.py）、图表界面（lightweight-charts 系、FreqUI）、指标计算库（TA-Lib、pandas-ta、technical）。
+
+⚠️ 已核实：Freqtrade 官方把 `plot-dataframe` / `plot-profit` 标记为 **deprecated**、推荐 FreqUI（https://www.freqtrade.io/en/stable/plotting/）。别在废弃命令上花时间。
+
+**打分维度（1~5）**：多周期 / 自定义指标 / 买卖点可视化 / 回测 / 活跃度 / 二次开发成本 / 与 Python+pandas 契合 → 加权总分 → 选 1 个 + 200 字理由 + 淘汰原因 + 3 条备选路线让我拍板。
+
+---
+
+## 3. 六条提示词（正文；可直接用的纯文本在 `prompts/` 目录）
+
+### P0 — 核定规格，产出唯一事实源（无电子书版）
+
+```
+你是这个仓库的技术负责人。做一个以《以交易为生》(Alexander Elder, Trading for a Living, 1993) 方法论为依据的交易软件。
+
+重要前提：用户没有这本书的电子版。禁止编造书页码、章节号或"书中原文"；所有依据锚定公开来源 URL + 短引文 + 置信度。
+
+输入：仓库根目录的 INDICATOR_SPEC.md（公开资料交叉核对规格 v1.0）。这是唯一输入。
+
+任务：把它规范化成机器可读规格，产出 docs/INDICATORS.md 与 docs/indicators.yaml。
+每条必须包含：
+- id（IND-xx / SYS-xx / RISK-xx）
+- 中文名 / 英文名
+- 数学公式（LaTeX 或伪代码，写清所有参数）
+- 参数：默认值 + 可选范围 + 是否有分歧（分歧项列进"参数待定表"）
+- 输入数据（需要 open/high/low/close/volume 中哪些）
+- 层级：三重滤网第几重 / 趋势 / 振荡 / 量能 / 风控
+- 买卖规则：可直接翻译成代码的布尔条件
+- confidence：A（多来源交叉确认）/ B（二手整理）/ C（默认不实现）
+- source_url + source_quote（<=50 字）+ source_page: null
+- status：implement / optional / skip
+
+额外要求：
+1. 若环境可联网，逐条用至少 2 个独立公开来源复核 A 级条目的公式，把 URL 和引文补进表；复核不了标 unverified，不要删除条目。
+2. 汇总"参数待定表"：RSI 周期、Stochastic 周期、Force Index 平滑周期、MACD(12,26,9)、EMA(13)、三重滤网周期比例。每项给默认值、备选值、依据来源。代码里这些必须做成配置项。
+3. 明确区分"多来源交叉确认"与"二手整理"，不许把二手内容写成"书中原文"。
+4. C 级条目（Impulse System、SafeZone、Chandelier、AutoEnvelope、ATR 通道体系等）归入"不实现清单"并说明理由。
+5. 文档与代码顶部统一标注："本规格基于公开资料交叉核对重建，非原书直引；source_page 一律为 null。"
+6. docs/indicators.yaml 要能被代码直接读取，参数集中在 params: 下，禁止散落硬编码。
+7. 本阶段只写文档，不改任何代码。
+
+完成后输出：条目总数、A/B/C 各多少、参数待定表全文、不实现清单、两个文件路径。
+```
+
+### P1 — 在 GitHub 找契合的底座并给出证据
+
+```
+目标：为产品选一个可二次开发的开源底座，调研必须可复现。
+
+0. 先检查 gh CLI 是否可用（command -v gh）。不可用则改用 curl 调 GitHub REST API，命令见 CODEX_PROMPTS.md 第 5 节。不许凭记忆推荐仓库。
+
+1. 真实检索 GitHub，至少覆盖三个方向：策略/回测框架、图表界面库、指标计算库。把检索命令原文和返回结果贴进报告。
+2. 硬约束（不满足直接淘汰并写明原因）：
+   A. 支持多时间框架（周/日/小时同时参与一个信号）——到仓库文档/源码找证据并写路径（freqtrade 的 @informative / merge_informative_pair，backtrader 的多 data feed）。
+   B. 允许自定义指标公式。
+   C. 能把买卖信号标到 K 线上（箭头/marker/交易点表）。
+   D. 许可证允许二次开发，近 12 个月有提交，未 archived。
+   E. 指标参数可外部配置，不写死。
+3. 每个候选取真实数据：star 数、最近 push、license、主语言、archived 状态、issue/PR 活跃度。
+4. 注意 Freqtrade 已弃用 plot-dataframe、推荐 FreqUI，不要基于废弃能力打分。
+5. 输出 PROJECT_SELECTION.md：检索命令、>=5 个候选对比表、7 维度打分 1-5、加权总分、最终选 1 个 + 200 字理由、淘汰项及原因。
+6. 最后给 3 条备选路线（最小改动原型 / 完整可运行软件 / 纯前端展示）让我拍板；并告诉我选定后 clone 到哪个目录、P2 的"底座 ="该填什么。
+
+本阶段不要 clone、不要改代码，先交报告。
+```
+
+### P2 — 实现指标与三重滤网信号引擎
+
+```
+承接 P0/P1。先读取 PROJECT_SELECTION.md，取其中"最终选定"的仓库与本地路径作为底座；若该文件不存在或没有明确结论，停下来问我，不要自己假设。
+
+读取 docs/INDICATORS.md 与 docs/indicators.yaml：只实现 status=implement 的条目；optional/unverified/skip 一律跳过并在 README 的"未实现清单"列出。
+
+1. 先输出实现计划（目录结构、每个指标放哪、如何接到底座策略接口、测试策略），等我确认后再写代码。
+2. 每个指标实现为纯函数 fn(df: pd.DataFrame, **params) -> pd.Series/DataFrame，只用 pandas/numpy；不读网络、不绘图、不依赖 UI。参数一律从 docs/indicators.yaml 的 params 读取，禁止硬编码、禁止自行调参。
+3. 每个指标配单元测试：5~10 行手工构造 OHLCV，把期望值手算出来做数值断言；覆盖 EMA 预热期、成交量缺失、NaN 边界、常数价格序列。
+4. 三重滤网引擎：第 1 重定方向 -> 第 2 重找逆势回调 -> 第 3 重突破挂单。第 1 重方向是严格开关，逆势信号一律丢弃。
+5. 风控模块：2% 法则仓位（先定止损距离再算仓位）、6% 法则月度熔断、50% 法则移动止损。
+6. 信号表每行必须携带：timestamp, symbol, side, price, rule_id, indicator_values(dict), source_url, source_quote, confidence, source_page(null)。缺来源的信号不许生成。
+7. 严禁：未收盘 K 线、shift(-n)/任何未来数据、逐行 for 循环算指标、把二手参数当原著参数、引入机器学习预测、伪造书页码。
+
+完成后运行 pytest 并贴真实输出；列出实现/跳过了哪些 id 及原因。
+```
+
+### P3 — 把买卖点标出来，做成能看的软件界面
+
+```
+把 P2 的信号渲染成人能看懂的交易软件界面。
+
+1. 主图 K 线 + EMA；副图 MACD 柱状图 / Force Index / Elder-Ray / RSI，参数取 docs/indicators.yaml。
+2. 买点：K 线下方箭头 + 标签（rule_id 与触发规则）；卖点：上方箭头。点击/悬停展示完整依据：source_quote、source_url、confidence、触发时各指标数值、按 2% 法则算出的仓位与止损价。
+3. 每个依据面板顶部固定一行："依据：公开资料交叉核对，非原书直引"。禁止显示书页码或"书中原文"。
+4. 若底座是 freqtrade：官方已弃用 plot-dataframe，用 FreqUI 或自己用 lightweight-charts 的 setMarkers 渲染。
+5. 导出 examples/signals.csv + 一张静态图或可打开的 HTML 快照。
+6. 配色遵循中国市场惯例：涨红跌绿；货币符号默认 ¥。
+7. 界面顶部固定："仅供研究与回测，不构成投资建议"。
+
+先给界面草图/组件结构再写实现；完成后给截图或 HTML 路径及生成命令。
+```
+
+### P4 — 验收与交付（要证据，不要结论）
+
+```
+做一次完整验收，逐项给证据，不接受"已完成""应该没问题"。
+
+1. 跑通"数据加载 -> 指标计算 -> 信号 -> 出图"的一条命令，贴命令和真实 stdout。
+2. pytest 全绿，贴用例数与输出；确认每个 implement 指标都有数值断言测试。
+3. 未来函数检查：写代码或用框架工具（如 freqtrade lookahead-analysis / recursive-analysis）证明只用已收盘数据，贴结果。
+4. 抽 3 个买卖点，逐个对照 docs/INDICATORS.md 的公式与 source_quote，说明触发原因、属于第几重滤网、止损价与 2% 仓位怎么算的。同时确认没有任何一处出现伪造的书页码。
+5. 生成 docs/TRACEABILITY.md：id -> source_url/quote -> 代码文件/函数 -> 测试用例 -> 信号 rule_id。对不上就标红说明。
+6. README：安装运行、目录说明、参数在哪改、已知限制、未实现清单、"非原书直引"声明、风险声明。
+7. git 提交，message 写清范围。
+
+最后 5 行总结：实现了什么、验证了什么、还差什么、下一步建议、需要我决策的问题。
+```
+
+### P0-R — 可选：将来拿到书后回填（现在不用跑）
+
+```
+读取用户提供的《以交易为生》电子版，逐条给 docs/INDICATORS.md 补 章节/页码/原文短引(<=50字)，把 confidence 升级为 book-confirmed，source_page 从 null 改为真实页码。发现与现有规格冲突的，列成差异表让我决策，不要静默覆盖。同步更新 docs/indicators.yaml 与界面上的来源标注（去掉"非原书直引"提示）。
+```
+
+---
+
+## 4. 验收总清单
+
+- [ ] `docs/INDICATORS.md` 每条都有 `source_url + source_quote + confidence`，且 `source_page` 全为 null
+- [ ] 全仓库 grep 不到编造的"书中原文/第 X 章/第 X 页"表述
+- [ ] `docs/indicators.yaml` 的 params 集中可配，代码里没有硬编码周期数字
+- [ ] `PROJECT_SELECTION.md` 有真实 API 返回，选型满足 A~E
+- [ ] 每个 implement 指标有手算数值单测
+- [ ] 三重滤网三层齐全，第 1 重是硬开关
+- [ ] `signals.csv` 每行都能追到 `rule_id + source_url + quote + confidence`
+- [ ] 图上有买卖箭头，点开能看到依据与"非原书直引"标注
+- [ ] 未来函数检查通过；`TRACEABILITY.md` 全链路对得上
+
+---
+
+## 5. 附录：GitHub 检索命令（`gh` 未装时用 curl）
+
+```bash
+# 方案 A：装 gh（可选）
+brew install gh && gh auth login
+gh search repos "algorithmic trading" --stars ">3000" --language python \
+  --json fullName,stargazersCount,description,url,updatedAt --limit 30
+
+# 方案 B：不装 gh，直接 REST API（推荐，本机可直接跑）
+curl -sS -H "Accept: application/vnd.github+json" \
+  "https://api.github.com/search/repositories?q=trading+bot+technical+indicator+stars:%3E2000+language:python+pushed:%3E2025-01-01&sort=stars&per_page=20" \
+  | python3 -c "import sys,json; [print(f\"{i['full_name']} | star={i['stargazers_count']} | push={i['pushed_at']} | archived={i['archived']} | {i['html_url']}\") for i in json.load(sys.stdin)['items']]"
+
+# 单个仓库真实状态
+curl -sS https://api.github.com/repos/freqtrade/freqtrade \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print({k:d.get(k) for k in ('full_name','stargazers_count','pushed_at','archived','license','language')})"
+
+# 多周期能力证据（clone 后自己 grep）
+# freqtrade: @informative / merge_informative_pair
+# backtrader: 多个 cerebro.adddata()
+```
+
+> 未认证的 GitHub API 限流 60 次/小时，够用；若超限，等一小时或 `gh auth login` 后走认证。
+
+---
+
+**风险声明**：本书方法提出于 1993 年，且本规格是公开资料重建、非原书直引，公式与参数务必在你的市场与周期上重新验证。软件定位为研究与回测工具，默认 Dry-run，不构成投资建议。

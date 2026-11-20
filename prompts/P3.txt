@@ -1,0 +1,11 @@
+把 P2 的信号渲染成人能看懂的交易软件界面。
+
+1. 主图 K 线 + EMA；副图 MACD 柱状图 / Force Index / Elder-Ray / RSI，参数取 docs/indicators.yaml。
+2. 买点：K 线下方箭头 + 标签（rule_id 与触发规则）；卖点：上方箭头。点击/悬停展示完整依据：source_quote、source_url、confidence、触发时各指标数值、按 2% 法则算出的仓位与止损价。
+3. 每个依据面板顶部固定一行："依据：公开资料交叉核对，非原书直引"。禁止显示书页码或"书中原文"。
+4. 若底座是 freqtrade：官方已弃用 plot-dataframe，用 FreqUI 或自己用 lightweight-charts 的 setMarkers 渲染。
+5. 导出 examples/signals.csv + 一张静态图或可打开的 HTML 快照。
+6. 配色遵循中国市场惯例：涨红跌绿；货币符号默认 ¥。
+7. 界面顶部固定："仅供研究与回测，不构成投资建议"。
+
+先给界面草图/组件结构再写实现；完成后给截图或 HTML 路径及生成命令。

@@ -1,0 +1,29 @@
+你是这个仓库的技术负责人。做一个以《以交易为生》(Alexander Elder, Trading for a Living, 1993) 方法论为依据的交易软件。
+
+重要前提：用户没有这本书的电子版。禁止编造书页码、章节号或"书中原文"；所有依据锚定公开来源 URL + 短引文 + 置信度。
+
+输入：仓库根目录的 INDICATOR_SPEC.md（公开资料交叉核对规格 v1.0）。这是唯一输入。
+
+任务：把它规范化成机器可读规格，产出 docs/INDICATORS.md 与 docs/indicators.yaml。
+每条必须包含：
+- id（IND-xx / SYS-xx / RISK-xx）
+- 中文名 / 英文名
+- 数学公式（LaTeX 或伪代码，写清所有参数）
+- 参数：默认值 + 可选范围 + 是否有分歧（分歧项列进"参数待定表"）
+- 输入数据（需要 open/high/low/close/volume 中哪些）
+- 层级：三重滤网第几重 / 趋势 / 振荡 / 量能 / 风控
+- 买卖规则：可直接翻译成代码的布尔条件
+- confidence：A（多来源交叉确认）/ B（二手整理）/ C（默认不实现）
+- source_url + source_quote（<=50 字）+ source_page: null
+- status：implement / optional / skip
+
+额外要求：
+1. 若环境可联网，逐条用至少 2 个独立公开来源复核 A 级条目的公式，把 URL 和引文补进表；复核不了标 unverified，不要删除条目。
+2. 汇总"参数待定表"：RSI 周期、Stochastic 周期、Force Index 平滑周期、MACD(12,26,9)、EMA(13)、三重滤网周期比例。每项给默认值、备选值、依据来源。代码里这些必须做成配置项。
+3. 明确区分"多来源交叉确认"与"二手整理"，不许把二手内容写成"书中原文"。
+4. C 级条目（Impulse System、SafeZone、Chandelier、AutoEnvelope、ATR 通道体系等）归入"不实现清单"并说明理由。
+5. 文档与代码顶部统一标注："本规格基于公开资料交叉核对重建，非原书直引；source_page 一律为 null。"
+6. docs/indicators.yaml 要能被代码直接读取，参数集中在 params: 下，禁止散落硬编码。
+7. 本阶段只写文档，不改任何代码。
+
+完成后输出：条目总数、A/B/C 各多少、参数待定表全文、不实现清单、两个文件路径。

@@ -1,0 +1,13 @@
+承接 P0/P1。先读取 PROJECT_SELECTION.md，取其中"最终选定"的仓库与本地路径作为底座；若该文件不存在或没有明确结论，停下来问我，不要自己假设。
+
+读取 docs/INDICATORS.md 与 docs/indicators.yaml：只实现 status=implement 的条目；optional/unverified/skip 一律跳过并在 README 的"未实现清单"列出。
+
+1. 先输出实现计划（目录结构、每个指标放哪、如何接到底座策略接口、测试策略），等我确认后再写代码。
+2. 每个指标实现为纯函数 fn(df: pd.DataFrame, **params) -> pd.Series/DataFrame，只用 pandas/numpy；不读网络、不绘图、不依赖 UI。参数一律从 docs/indicators.yaml 的 params 读取，禁止硬编码、禁止自行调参。
+3. 每个指标配单元测试：5~10 行手工构造 OHLCV，把期望值手算出来做数值断言；覆盖 EMA 预热期、成交量缺失、NaN 边界、常数价格序列。
+4. 三重滤网引擎：第 1 重定方向 -> 第 2 重找逆势回调 -> 第 3 重突破挂单。第 1 重方向是严格开关，逆势信号一律丢弃。
+5. 风控模块：2% 法则仓位（先定止损距离再算仓位）、6% 法则月度熔断、50% 法则移动止损。
+6. 信号表每行必须携带：timestamp, symbol, side, price, rule_id, indicator_values(dict), source_url, source_quote, confidence, source_page(null)。缺来源的信号不许生成。
+7. 严禁：未收盘 K 线、shift(-n)/任何未来数据、逐行 for 循环算指标、把二手参数当原著参数、引入机器学习预测、伪造书页码。
+
+完成后运行 pytest 并贴真实输出；列出实现/跳过了哪些 id 及原因。

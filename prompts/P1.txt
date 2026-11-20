@@ -1,0 +1,17 @@
+目标：为产品选一个可二次开发的开源底座，调研必须可复现。
+
+0. 先检查 gh CLI 是否可用（command -v gh）。不可用则改用 curl 调 GitHub REST API，命令见 CODEX_PROMPTS.md 第 5 节。不许凭记忆推荐仓库。
+
+1. 真实检索 GitHub，至少覆盖三个方向：策略/回测框架、图表界面库、指标计算库。把检索命令原文和返回结果贴进报告。
+2. 硬约束（不满足直接淘汰并写明原因）：
+   A. 支持多时间框架（周/日/小时同时参与一个信号）——到仓库文档/源码找证据并写路径（freqtrade 的 @informative / merge_informative_pair，backtrader 的多 data feed）。
+   B. 允许自定义指标公式。
+   C. 能把买卖信号标到 K 线上（箭头/marker/交易点表）。
+   D. 许可证允许二次开发，近 12 个月有提交，未 archived。
+   E. 指标参数可外部配置，不写死。
+3. 每个候选取真实数据：star 数、最近 push、license、主语言、archived 状态、issue/PR 活跃度。
+4. 注意 Freqtrade 已弃用 plot-dataframe、推荐 FreqUI，不要基于废弃能力打分。
+5. 输出 PROJECT_SELECTION.md：检索命令、>=5 个候选对比表、7 维度打分 1-5、加权总分、最终选 1 个 + 200 字理由、淘汰项及原因。
+6. 最后给 3 条备选路线（最小改动原型 / 完整可运行软件 / 纯前端展示）让我拍板；并告诉我选定后 clone 到哪个目录、P2 该用哪个底座。
+
+本阶段不要 clone、不要改代码，先交报告。

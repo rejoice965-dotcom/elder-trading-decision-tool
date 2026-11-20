@@ -1,0 +1,1 @@
+读取用户提供的《以交易为生》电子版，逐条给 docs/INDICATORS.md 补 章节/页码/原文短引(<=50字)，把 confidence 升级为 book-confirmed，source_page 从 null 改为真实页码。发现与现有规格冲突的，列成差异表让我决策，不要静默覆盖。同步更新 docs/indicators.yaml 与界面上的来源标注（去掉"非原书直引"提示）。
