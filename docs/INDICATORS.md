@@ -1,6 +1,6 @@
 # 指标规格 v1.0（P0 产出 · 机器可读版见 `indicators.yaml`）
 
-> **本规格以公开资料交叉核对为基础。15 条已按用户确认的原书第2版资料回填真实页码，6 条仍为 `null`；未确认内容不得编造。**
+> **本规格以公开资料交叉核对为基础。19 条已按用户确认的原书第2版资料回填真实页码，2 条仍为 `null`；未确认内容不得编造。**
 > 用户没有《以交易为生》电子版。全仓库禁止编造章节号、页码或"书中原文"。
 > 事实源：`INDICATOR_SPEC.md`（v1.0）。代码只读 `docs/indicators.yaml` 的 `params:`。
 > 本文件由 WorkBuddy 代跑 P0 生成（本机 Codex CLI 在受限执行环境中无法写文件，详见 `CODEX_PROMPTS.md` 第 1.1 节）。
@@ -13,10 +13,11 @@
 | confidence A（多来源交叉确认） | 15 → `status: implement` |
 | confidence B（二手整理） | 4 → `status: optional`（默认不实现） |
 | confidence C（后续著作/插件） | 2 → `status: skip` |
-| 已回填书内依据 | **15**（原书第2版） |
-| 仍为 `source_page: null` 的条目 | **6**（待补） |
+| 已回填书内依据 | **19**（原书第2版） |
+| 用户确认的书内引文 | **44** |
+| 仍为 `source_page: null` 的条目 | **2**（IND-04、IND-07，正文无独立小节） |
 
-来源编号见 `INDICATOR_SPEC.md` 的「来源编号」表（S1~S6）。引文均为来源页面原句摘录，仅用于定位。
+公开资料来源编号见 `INDICATOR_SPEC.md` 的「来源编号」表（S1~S6）。书内短引单列在第七节，来自用户确认的第二版纸书摘录。
 
 ---
 
@@ -79,10 +80,10 @@
 | IND-07 | Williams %R | `WR=-100*(HHV(n)-close)/(HHV(n)-LLV(n))` | 待核对 | high, low, close | 超买超卖 + 背离 | B | S5；无可核验短引 → `unverified` | optional |
 | IND-08 | 背离分类 A/B/C | A：价格创新高/低而指标未创新高/低；B：双顶/底+指标走弱；C：指标持平 | 无 | price + 任一振荡指标 | A 类最强反转信号 | B | S5 "Class A: when price reaches a new high/low, an oscillator reaches a lower high/higher bottom" | optional |
 | IND-09 | 成交量 Volume | 原始 `volume` 柱 | 无 | volume | 原始成交量透传，量价确认为 optional | A | S1, S4 | implement |
-| IND-10 | OBV 能量潮 | `OBV_t = OBV_{t-1} ± volume_t` | 无 | close, volume | 价格新高 OBV 未新高 → 动能减弱 | B | S4, S5；`unverified` | optional |
-| IND-11 | A/D、Herrick Payoff Index | 待核对 | — | — | 验证量价力量 | C | S5 | skip |
-| IND-12 | 趋势线、支撑/阻力 | 画线 | — | high, low, close | 触碰越多越有效；假突破用背离识别 | B | S5；`unverified` | optional |
-| IND-13 | 缺口、K 线反转形态、头肩/双顶双底 | 形态识别 | — | OHLC | 共振确认，不单独开仓 | C | S4 | skip |
+| IND-10 | OBV 能量潮 | `OBV_t = OBV_{t-1} ± volume_t` | 无 | close, volume | 书内定位 p.156、p.158；optional，暂不实现 | B | S4, S5 | optional |
+| IND-11 | A/D、Herrick Payoff Index | 待核对 | — | — | A/D 书内定位 p.159、p.162；status 仍为 skip | C | S5 | skip |
+| IND-12 | 趋势线、支撑/阻力 | 支撑/阻力区域 | — | high, low, close | 保留支撑/阻力为 optional；第2版 p.82-83 认为趋势线主观且具误导性，趋势线书内弃用、不实现 | B | S5 | optional |
+| IND-13 | 缺口、K 线反转形态、头肩/双顶双底 | 形态识别 | — | OHLC | 第2版 p.73 否定三角旗形、头肩顶等传统形态，只认同袋鼠尾等客观形态；维持 skip | C | S4 | skip |
 
 ---
 
@@ -92,7 +93,7 @@
 |---|---|---|---|---|---|
 | RISK-01 | 2% 法则 | `max_risk = equity*0.02`; `size = max_risk/(entry-stop)`；**先定止损距离再算仓位** | A | S2 "Never risk more than 2% of total trading capital on a single trade." | implement |
 | RISK-02 | 6% 法则 | `if (month_open_equity-equity) > 0.06*month_open_equity: halt_trading(rest_of_month)` | A | S2 "If the account falls 6% below its monthly opening balance, stop trading for the rest of that month." | implement |
-| RISK-03 | 50% 法则 | `stop = entry + 0.5*(best_price-entry)`（多单）| A | S2 "the stop is moved to a level that protects at least half the paper gain" | implement |
+| RISK-03 | 50% 法则 | `stop = entry + profit_protect_ratio*(best_price-entry)`（多单）| A | S2 "the stop is moved to a level that protects at least half the paper gain" | implement；第2版差异见下文 |
 
 ---
 
@@ -141,13 +142,16 @@
 - **D7 / SYS-04**：第2版 p.167 记载「2日EMA可以很好地与三重滤网交易系统（见第39节）相适应。」p.229 说明将振荡指标用于日线。按决定保留三选一 setup，Force Index 触发列为 optional。
 - **D8 / RISK-02**：第2版 p.304 将当月损失与持仓头寸风险额度之和计入 6% 限额。项目按用户决定维持当前实现，不改风控代码。
 - **D1**：Impulse System 正文见第2版 p.236-242，仍不实现并列二期 optional；第41节通道交易系统从 p.242 起，处理相同。
+- **D9 / IND-12**：p.82-83 认为趋势线主观且具误导性。趋势线书内弃用、不实现，IND-12 只保留支撑/阻力 optional。
+- **D10 / IND-13**：p.73 否定三角旗形、头肩顶等经典图表形态，仅认同袋鼠尾等客观形态（第20节 p.96 起）；维持 skip。
+- **D11 / RISK-03**：p.324 举例保护三分之一浮盈，并说明比例可依信心和风险偏好调整；现可配置参数 `profit_protect_ratio=0.50` 保持不变。
 
 ## 六、已决事项与待补依据
 
 1. RSI 周期按用户决定保持 14。第2版 7～9 日建议与 13 日示例作为差异记录。
 2. `optional` 指标和附加规则按用户决定默认跳过。
 3. 目标市场与数据源已按项目决定为 A 股和 AkShare。
-4. 第2版依据已回填 15 条；IND-04、IND-07、IND-10、IND-12、IND-13、RISK-03 共 6 条待补书页，保持 `source_page: null`。
+4. 第2版依据已回填 19 条、44 行引文；仅 IND-04、IND-07 经 p.138-148 全节核对无独立小节，永久保持 `source_page: null`。
 ## 七、书内确认（第2版）
 
 版本：《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5。章节、页码和短引逐字取自用户确认的 `docs/book_references.csv`，书页照片编号见 CSV notes。
@@ -186,3 +190,21 @@
 | RISK-01 | 第9章 风险管理 · 第50节 2%法则 | p.298 | 将A除以B，得到所能交易的最大股数。 |
 | RISK-02 | 第9章 风险管理 · 第51节 6%法则 | p.302 | 6%原则能给每一个账户都设了一个当月最大回撤比例。 |
 | RISK-02 | 第9章 风险管理 · 第51节 6%法则 | p.304 | 如果两者之和已经超过你月初账户资产的6%时，这个月剩下的时间你都不能再增加交易头寸了 |
+| IND-09 | 第5章 成交量和时间 · 第28节 成交量 | p.155 | “高成交量”意味着高于其过去两周成交量平均值25%以上的成交量 |
+| IND-11 | 第5章 成交量和时间 · 第29节 以成交量为基础的指标 · 「集散指标（A/D）」 | p.159 | 拉瑞·威廉姆斯（Larry Williams）开发了集散指标 |
+| IND-10 | 第5章 成交量和时间 · 第29节 以成交量为基础的指标 · 「能量潮指标」 | p.156 | 能量潮指标将成交量进行滚动加总，每日的成交量会被加入或减去，这取决于当日价格比昨天价格高还是低。 |
+| IND-10 | 第5章 成交量和时间 · 第29节 以成交量为基础的指标 · 「交易信号」 | p.158 | 当OBV达到新高时，便确认了多头的力量，表明价格将很可能持续上涨，并给出买入的信号 |
+| IND-12 | 第3章 经典图表分析法 · 第18节 支撑位和阻力位 | p.81 | 支撑位是这样一个价格位，在这个价格上多方的力量足够强，能够干扰甚至逆转下跌的趋势。 |
+| IND-12 | 第3章 经典图表分析法 · 第18节 支撑位和阻力位 | p.81 | 阻力位是这样一个价格位，在这个价格上，空方的力量足够强，能够干扰甚至逆转一个上涨的趋势。 |
+| IND-12 | 第3章 经典图表分析法 · 第18节 支撑位和阻力位 · 「支撑和阻力」 | p.82 | 趋势线是非常主观的，它是最自欺欺人的 |
+| IND-13 | 第3章 经典图表分析法 · 第17节 图表 | p.73 | 由于其主观性，我越来越怀疑那些传统图表分析法形态的作用，比如三角旗形、头肩顶等。 |
+| IND-13 | 第3章 经典图表分析法 · 第17节 图表 | p.73 | 我认同“手指”或叫作“袋鼠尾”——一种冲出密集成交区的大柱形态。 |
+| RISK-03 | 第10章 实践细节 · 第54节 怎样设定止损线：不要异想天开 · 「不要让盈利变为亏损」 | p.324 | 不要让有丰厚账面浮盈的未平仓头寸变为亏损！ |
+| RISK-03 | 第10章 实践细节 · 第54节 怎样设定止损线：不要异想天开 · 「不要让盈利变为亏损」 | p.324 | 比如，你的决定可能是：一旦止损线超过盈亏平衡点了，考虑保证三分之一的浮盈。 |
+| RISK-03 | 第10章 实践细节 · 第54节 怎样设定止损线 · 「灾难性止损：专业交易者的救生衣」 | p.326 | 然后在这个位置设定你的硬止损线。在取消之前，这个止损线会一直有效，这就是你的“灾难性止损线”。 |
+
+### RISK-03 第2版说明（D11）
+
+第2版 p.324 举例「保证三分之一的浮盈」，并说明此比例不是固定值，可按信心和风险偏好决定。现实现的 `profit_protect_ratio=0.50` 保持不变且仍可配置。p.326 的灾难性止损为额外底线，不改变本项目参数。
+
+**第二批、第三批合并回填**：本轮新增12行，涉及 IND-09、IND-10、IND-11、IND-12、IND-13、RISK-03；累计19条规格、44行确认引文。IND-04 与 IND-07 经第二版第26节全节核对无独立小节，保持 `source_page: null`。

@@ -10,6 +10,7 @@ meta:
   source_page_policy: "已确认条目填写第2版真实页码，其余为 null；禁止编造章节号/页码/引文"
   generated_by: "WorkBuddy 代跑 P0（本机 Codex CLI 受执行环境沙箱限制，未能写文件）"
   counts: { total: 21, A: 15, B: 4, C: 2 }
+  book_backfill: { confirmed_specs: 19, confirmed_quotes: 44, pending_specs: [IND-04, IND-07], book_photos: 100 }
 
 # ===== 唯一参数入口 =====
 params:
@@ -310,10 +311,10 @@ indicators:
     source_quote: "If the close is higher today than yesterday, the force is positive."
     book_confirmed: "第2版"
     book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
-    book_chapter: ["第5章 成交量和时间 · 第30节 强力指数指标 · 「交易心理学」"]
-    book_page: ["p.164"]
-    book_quote: ["成交量反映了市场参与者的情绪卷入程度。"]
-    source_page: "p.164"
+    book_chapter: ["第5章 成交量和时间 · 第30节 强力指数指标 · 「交易心理学」", "第5章 成交量和时间 · 第28节 成交量"]
+    book_page: ["p.164", "p.155"]
+    book_quote: ["成交量反映了市场参与者的情绪卷入程度。", "“高成交量”意味着高于其过去两周成交量平均值25%以上的成交量"]
+    source_page: "p.164, p.155"
     status: implement
   - id: IND-10
     name: "OBV 能量潮"
@@ -325,9 +326,14 @@ indicators:
     confidence: B
     source_ids: [S4, S5]
     source_quote: null
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第5章 成交量和时间 · 第29节 以成交量为基础的指标 · 「能量潮指标」", "第5章 成交量和时间 · 第29节 以成交量为基础的指标 · 「交易信号」"]
+    book_page: ["p.156", "p.158"]
+    book_quote: ["能量潮指标将成交量进行滚动加总，每日的成交量会被加入或减去，这取决于当日价格比昨天价格高还是低。", "当OBV达到新高时，便确认了多头的力量，表明价格将很可能持续上涨，并给出买入的信号"]
+    source_page: "p.156, p.158"
     status: optional
-    note: "unverified"
+    note: "第2版书内定位已确认；status 保持 optional，本轮不实现。"
   - id: IND-11
     name: "A/D、Herrick Payoff Index"
     formula: null
@@ -340,35 +346,46 @@ indicators:
     source_quote: null
     book_confirmed: "第2版"
     book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
-    book_chapter: ["第5章 成交量和时间 · 第29节 以成交量为基础的指标 · 「更多关于 A/D 值」"]
-    book_page: ["p.162"]
-    book_quote: ["在A/D和日本蜡烛图之间有很强的类似性，它们都关注开盘价和收盘价之间的差异。"]
-    source_page: "p.162"
+    book_chapter: ["第5章 成交量和时间 · 第29节 以成交量为基础的指标 · 「更多关于 A/D 值」", "第5章 成交量和时间 · 第29节 以成交量为基础的指标 · 「集散指标（A/D）」"]
+    book_page: ["p.162", "p.159"]
+    book_quote: ["在A/D和日本蜡烛图之间有很强的类似性，它们都关注开盘价和收盘价之间的差异。", "拉瑞·威廉姆斯（Larry Williams）开发了集散指标"]
+    source_page: "p.162, p.159"
     status: skip
+    notes: "A/D=（收盘价−开盘价）/（最高价−最低价）×成交量，公式印于 p.159；status 仍为 skip。"
   - id: IND-12
     name: "趋势线、支撑/阻力"
     formula: null
     params_ref: []
     inputs: [high, low, close]
     layer: "aux/all"
-    rule: "触碰越多越有效；假突破用背离识别"
+    rule: "支撑/阻力区域的有效性与触碰有关；第2版 p.82-83 称趋势线主观且具误导性，趋势线书内弃用、不实现。IND-12 仅保留支撑/阻力为 optional。"
     confidence: B
     source_ids: [S5]
     source_quote: null
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第3章 经典图表分析法 · 第18节 支撑位和阻力位", "第3章 经典图表分析法 · 第18节 支撑位和阻力位 · 「支撑和阻力」"]
+    book_page: ["p.81", "p.82"]
+    book_quote: ["支撑位是这样一个价格位，在这个价格上多方的力量足够强，能够干扰甚至逆转下跌的趋势。", "阻力位是这样一个价格位，在这个价格上，空方的力量足够强，能够干扰甚至逆转一个上涨的趋势。", "趋势线是非常主观的，它是最自欺欺人的"]
+    source_page: "p.81, p.82"
     status: optional
-    note: "unverified"
+    note: "第2版 p.82 原句跨页至 p.83；趋势线书内弃用、不实现，支撑/阻力维持 optional。"
   - id: IND-13
     name: "缺口、K线反转形态、头肩/双顶双底"
     formula: null
     params_ref: []
     inputs: [open, high, low, close]
     layer: "aux/screen3"
-    rule: "共振确认，不单独开仓"
+    rule: "第2版 p.73 明确否定三角旗形、头肩顶等经典图表形态，只认同袋鼠尾等客观形态（第20节 p.96 起）；维持 skip。"
     confidence: C
     source_ids: [S4]
     source_quote: null
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第3章 经典图表分析法 · 第17节 图表"]
+    book_page: ["p.73"]
+    book_quote: ["由于其主观性，我越来越怀疑那些传统图表分析法形态的作用，比如三角旗形、头肩顶等。", "我认同“手指”或叫作“袋鼠尾”——一种冲出密集成交区的大柱形态。"]
+    source_page: "p.73"
     status: skip
 
 # ===== 风控 =====
@@ -407,12 +424,18 @@ risk:
     name: "50% 法则"
     formula: "stop=entry+profit_protect_ratio*(best_price-entry)"
     params_ref: [profit_protect_ratio]
-    rule: "有浮盈后把止损移到保住一半利润的位置"
+    rule: "有浮盈后移动止损保护利润；第2版 p.324 举例保护三分之一浮盈，并说明比例可按信心和风险偏好决定。profit_protect_ratio 保持可配置，现值 0.50 按 D11 不变。"
     confidence: A
     source_ids: [S2]
     source_quote: "the stop is moved to a level that protects at least half the paper gain"
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第10章 实践细节 · 第54节 怎样设定止损线：不要异想天开 · 「不要让盈利变为亏损」", "第10章 实践细节 · 第54节 怎样设定止损线 · 「灾难性止损：专业交易者的救生衣」"]
+    book_page: ["p.324"]
+    book_quote: ["不要让有丰厚账面浮盈的未平仓头寸变为亏损！"]
+    source_page: "p.324, p.326"
     status: implement
+    notes: "D11：p.324 举例保证三分之一浮盈，并说明比例可按信心和风险偏好调整；现 profit_protect_ratio=0.50 保持不变。灾难性止损引文另见 p.326。"
 
 # ===== 可选未实现规则（指标数值仍保留） =====
 optional_rules:
@@ -431,5 +454,5 @@ excluded:
 
 # ===== 待用户决策 =====
 open_questions:
-  - "待补第2版书页：IND-04、IND-07、IND-10、IND-12、IND-13、RISK-03；确认前保持 source_page=null"
+  - "第2版正文无独立小节、永久待补：IND-04、IND-07；保持 source_page=null"
   - "D4 用户决定保留 RSI 周期14；D6保留 Stochastic K 周期13；D8保留现有月度熔断实现"

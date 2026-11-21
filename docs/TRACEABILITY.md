@@ -1,6 +1,6 @@
 # Traceability
 
-本文以 [docs/indicators.yaml](indicators.yaml) 的 `status`、`sources` 和公式为基准。公开来源链接继续保留。15 条规格已 book-confirmed（第2版），其余 6 条 source_page 仍为 null；公开资料依据统一标注为交叉核对、非原书直引。
+本文以 [docs/indicators.yaml](indicators.yaml) 的 `status`、`sources` 和公式为基准。公开来源链接继续保留。19 条规格 / 44 行引文已 book-confirmed（第2版），仅 IND-04 与 IND-07 因第2版正文无独立小节而保持 source_page=null；公开资料依据仍标注为交叉核对、非原书直引。
 
 ## Systems
 
@@ -25,10 +25,10 @@
 | IND-09 Volume | implement · book-confirmed（第2版） | [S1](https://cmtassociation.org/wp-content/uploads/2025/08/MTA04May.pdf)、S4（无可核验 URL） · “If the close is higher today than yesterday, the force is positive.” | `elder_indicators/indicators.py::volume`; `calculate_indicators` | `tests/test_indicators.py::test_volume_preserves_observed_values` | 无 · 原始成交量透传，[量价确认为 optional](INDICATORS.md#optional-未实现规则) |
 | IND-07 Williams %R | optional, skipped | [S5](https://aloycwl.blogspot.com/2022/03/trading-for-living-alexander-elder-1993.html) · 规格未登记短引 | Not implemented | N/A | N/A |
 | IND-08 Divergence classes | optional, skipped · book-confirmed（第2版） | [S5](https://aloycwl.blogspot.com/2022/03/trading-for-living-alexander-elder-1993.html) · “Class A: when price reaches a new high/low, an oscillator reaches a lower high/higher bottom” | Not implemented | N/A | N/A |
-| IND-10 OBV | optional, skipped | S4（无可核验 URL）、[S5](https://aloycwl.blogspot.com/2022/03/trading-for-living-alexander-elder-1993.html) · 规格未登记短引 | Not implemented | N/A | N/A |
+| IND-10 OBV | optional, skipped · book-confirmed（第2版） | S4（无可核验 URL）、[S5](https://aloycwl.blogspot.com/2022/03/trading-for-living-alexander-elder-1993.html) · 规格未登记短引 | Not implemented | N/A | N/A |
 | IND-11 A/D and Herrick Payoff | skip · book-confirmed（第2版） | [S5](https://aloycwl.blogspot.com/2022/03/trading-for-living-alexander-elder-1993.html) · 规格未登记短引 | Not implemented | N/A | N/A |
-| IND-12 Trendlines/support/resistance | optional, skipped | [S5](https://aloycwl.blogspot.com/2022/03/trading-for-living-alexander-elder-1993.html) · 规格未登记短引 | Not implemented | N/A | N/A |
-| IND-13 Candlestick/chart patterns | skip | S4（无可核验 URL） · 规格未登记短引 | Not implemented | N/A | N/A |
+| IND-12 Trendlines/support/resistance | optional, skipped · book-confirmed（第2版） | [S5](https://aloycwl.blogspot.com/2022/03/trading-for-living-alexander-elder-1993.html) · 规格未登记短引 | Not implemented | N/A | N/A |
+| IND-13 Candlestick/chart patterns | skip · book-confirmed（第2版） | S4（无可核验 URL） · 规格未登记短引 | Not implemented | N/A | N/A |
 
 ### P4-R 复核
 
@@ -43,7 +43,7 @@
 |---|---|---|---|---|---|
 | RISK-01 2% rule | implement · book-confirmed（第2版） | [S2](https://www.marketsfn.com/book/trading-for-a-living) · “Never risk more than 2% of total trading capital on a single trade.” | `elder_indicators/risk.py::position_size`; `presentation/dashboard.py::estimate_position` | `tests/test_signals_and_risk.py::test_risk_rules_and_lot_rounding`; `tests/test_presentation.py::test_position_estimate_requires_equity_and_rounds_to_board_lot` | Applied when displaying SYS-05 BUY; not a signal trigger |
 | RISK-02 6% halt | implement · book-confirmed（第2版） | [S2](https://www.marketsfn.com/book/trading-for-a-living) · “If the account falls 6% below its monthly opening balance, stop trading for the rest of that month.” | `elder_indicators/risk.py::monthly_halt` | `tests/test_signals_and_risk.py::test_risk_rules_and_lot_rounding` | N/A, account-level guard |
-| RISK-03 50% protection | implement | [S2](https://www.marketsfn.com/book/trading-for-a-living) · “the stop is moved to a level that protects at least half the paper gain” | `elder_indicators/risk.py::protected_stop` | `tests/test_signals_and_risk.py::test_risk_rules_and_lot_rounding` | N/A, position-management output |
+| RISK-03 50% protection | implement · book-confirmed（第2版） | [S2](https://www.marketsfn.com/book/trading-for-a-living) · “the stop is moved to a level that protects at least half the paper gain” | `elder_indicators/risk.py::protected_stop` | `tests/test_signals_and_risk.py::test_risk_rules_and_lot_rounding` | N/A, position-management output |
 
 ## Provenance Checks
 
@@ -53,4 +53,4 @@
 
 ## Book Backfill
 
-已确认的 15 个 spec_id：IND-01、IND-02、IND-03、IND-05、IND-06、IND-08、IND-09、IND-11、RISK-01、RISK-02、SYS-01、SYS-02、SYS-03、SYS-04、SYS-05。全部章节、页码和逐字短引见 [docs/INDICATORS.md「书内确认」](INDICATORS.md#七书内确认第2版)。上表公开来源链接保持原样。待补6条：IND-04、IND-07、IND-10、IND-12、IND-13、RISK-03。
+已确认的 19 个 spec_id：IND-01、IND-02、IND-03、IND-05、IND-06、IND-08、IND-09、IND-10、IND-11、IND-12、IND-13、RISK-01、RISK-02、RISK-03、SYS-01、SYS-02、SYS-03、SYS-04、SYS-05。全部44行章节、页码和逐字短引见 [docs/INDICATORS.md「书内确认」](INDICATORS.md#七书内确认第2版)。公开来源链接保持原样。待补2条：IND-04、IND-07（第2版正文无独立小节）。
