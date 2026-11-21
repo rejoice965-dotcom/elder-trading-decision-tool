@@ -80,4 +80,11 @@ def test_rsi_flat_gain_loss_and_constant_price() -> None:
 def test_elder_ray_respects_ema_warmup() -> None:
     result = elder_ray(sample_frame(), period=3)
     assert result.iloc[:2].isna().all().all()
-    assert result.iloc[2:].notna().all().all()
+    np.testing.assert_allclose(
+        result.iloc[2:].to_numpy(),
+        [[0.75, -1.25], [1.875, -0.125], [1.4375, -0.5625]],
+    )
+
+
+def test_volume_preserves_observed_values() -> None:
+    np.testing.assert_array_equal(volume(sample_frame()).to_numpy(), [1, 2, 3, 4, 5])

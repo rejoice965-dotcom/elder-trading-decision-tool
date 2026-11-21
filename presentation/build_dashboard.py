@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import html
 import json
 from pathlib import Path
 
@@ -25,6 +26,9 @@ def render_html(payload: dict[str, object]) -> str:
     serialized = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     serialized = serialized.replace("</", "<\\/")
     document = HTML_TEMPLATE.replace("__CHART_LIBRARY_URL__", CHART_LIBRARY_URL)
+    summary = payload["summary"]
+    title = html.escape(f"{summary['symbol']} {summary['name']} | 三重滤网研究")
+    document = document.replace("__PAGE_TITLE__", title)
     return document.replace("__DASHBOARD_DATA__", serialized)
 
 
@@ -73,7 +77,7 @@ HTML_TEMPLATE = r'''<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>600519.SH 贵州茅台 | 三重滤网研究</title>
+<title>__PAGE_TITLE__</title>
 <script src="__CHART_LIBRARY_URL__"></script>
 <style>
 :root{color-scheme:light;--ink:#202a32;--muted:#61707a;--line:#d8dee2;--paper:#fff;--wash:#f5f7f8;--up:#c83b3b;--down:#187b59;--accent:#315f7a;--warn:#8a4a00}
@@ -199,7 +203,6 @@ const markers=DATA.markers.map(item=>({
   position:item.side==="BUY"?"belowBar":"aboveBar",
   color:item.side==="BUY"?COLORS.red:COLORS.green,
   shape:item.side==="BUY"?"arrowUp":"arrowDown",
-  text:item.marker_label,
   size:1,
 }));
 candle.setMarkers(markers);
@@ -310,8 +313,8 @@ if(firstSignal)showForDate(firstSignal.time);else renderSignal(null);
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build the local A-share triple-screen dashboard")
-    parser.add_argument("--symbol", default="600519.SH")
-    parser.add_argument("--name", default="贵州茅台")
+    parser.add_argument("--symbol", required=True)
+    parser.add_argument("--name", required=True)
     parser.add_argument("--signals", type=Path, default=PROJECT_ROOT / "examples" / "signals.csv")
     parser.add_argument(
         "--output", type=Path, default=PROJECT_ROOT / "examples" / "triple-screen.html"

@@ -153,6 +153,20 @@ def test_incomplete_same_day_daily_bar_cannot_leak_into_intraday_signal() -> Non
     pd.testing.assert_frame_equal(baseline.reset_index(drop=True), with_future_close.reset_index(drop=True))
 
 
+def test_suspended_intraday_bar_cannot_emit_signal() -> None:
+    weekly, daily, intraday = sample_frames()
+    intraday["is_suspended"] = True
+    signals = build_triple_screen_signals(
+        weekly,
+        daily,
+        intraday,
+        symbol="600519.SH",
+        params=CONFIG["params"],
+        market=CONFIG["market"],
+    )
+    assert signals.empty
+
+
 def test_risk_rules_and_lot_rounding() -> None:
     assert position_size(100000, 10, 9, CONFIG["params"], CONFIG["market"]) == 2000
     assert position_size(10000, 100, 99.99, CONFIG["params"], CONFIG["market"]) == 100

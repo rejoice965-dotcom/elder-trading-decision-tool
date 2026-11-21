@@ -2,6 +2,7 @@ from ast import literal_eval
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from elder_indicators.config import load_config
 from presentation.build_dashboard import render_html
@@ -47,9 +48,15 @@ def test_markers_match_all_example_signals_and_keep_rule_ids() -> None:
     assert all(marker["confidence"] == "A" for marker in markers)
     assert all("source_page" not in marker for marker in markers)
 
-    html = render_html({"markers": markers, "provenance": PROVENANCE, "disclaimer": "仅供研究与回测，不构成投资建议"})
+    html = render_html({
+        "summary": {"symbol": "000001.SZ", "name": "测试 & Co"},
+        "markers": markers,
+        "provenance": PROVENANCE,
+        "disclaimer": "仅供研究与回测，不构成投资建议",
+    })
     embedded = html.split("const DATA = ", 1)[1].split(";\nconst {createChart", 1)[0]
     html_markers = __import__("json").loads(embedded)["markers"]
+    assert "<title>000001.SZ 测试 &amp; Co | 三重滤网研究</title>" in html
     assert len(html_markers) == 120
     assert [marker["rule_id"] for marker in html_markers] == signals["rule_id"].tolist()
     assert "source_page" not in html
@@ -59,6 +66,21 @@ def test_markers_match_all_example_signals_and_keep_rule_ids() -> None:
     assert 'value="100000"' in html
     assert "Math.floor(account*DATA.config.risk_pct/distance)" in html
     assert "Math.floor(shares/DATA.config.minimum_lot)*DATA.config.minimum_lot" in html
+
+
+def test_markers_reject_signal_without_daily_candle() -> None:
+    signal = pd.DataFrame([{
+        "timestamp": "2025-01-02 10:30:00",
+        "side": "BUY",
+        "price": 100.0,
+        "rule_id": "SYS-05",
+        "indicator_values": "{}",
+        "source_quote": "quote",
+        "source_url": "https://example.com/source",
+        "confidence": "A",
+    }])
+    with pytest.raises(ValueError, match="has no matching daily K-line"):
+        build_markers(signal, {}, {}, market=CONFIG["market"])
 
 
 def test_signal_detail_fields_and_provenance_are_present() -> None:

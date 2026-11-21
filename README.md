@@ -14,7 +14,7 @@
 
 ## 环境
 
-在 WorkBuddy 上级目录建立的 Python 3.13 环境中安装 VN.py 和扩展：
+在 WorkBuddy 上级目录建立的 Python 3.13 环境中安装 VN.py 和扩展。`requirements.txt` 包含 `exchange-calendars`，代码以 `XSHG` 日历封闭完整周线、补出停牌交易日 whitespace；60 分钟源数据每日按四个收盘时刻检查完整性。
 
 ```bash
 python3.13 -m venv ../.venv-vnpy
@@ -57,7 +57,7 @@ AkShare 为默认数据源。下载会联网，写入 `data/cache/`，并保存�
   --symbol 600519.SH --name 贵州茅台 --output examples/triple-screen.html
 ```
 
-回放程序读取缓存文件，不会在指标计算期间访问网络。指标使用 qfq OHLCV，订单价和涨跌停校验使用 raw OHLCV。60 分钟线不补造午休/停牌 bar。日线仅由配置要求的完整四根 60 分钟 bar 聚合；周线按 XSHG 交易日历，仅保留完整交易周。
+回放程序读取缓存文件，指标使用 qfq OHLCV，候选价和涨跌停校验使用 raw OHLCV。交易信号使用数据源提供的日线与 60 分钟线。专项检查用符合配置的四根 60 分钟 K 聚合日线，核对日收盘。周线由日线按 XSHG 交易日历聚合，仅保留完整交易周。
 
 ## 测试
 
@@ -65,7 +65,23 @@ AkShare 为默认数据源。下载会联网，写入 `data/cache/`，并保存�
 ../.venv-vnpy/bin/python -m pytest -q
 ```
 
-测试仅使用手工 OHLCV fixture。真实行情 E2E 单独执行上面的下载命令，成功时打印四组缓存行数及数据日期/复权元数据。
+指标与市场规则测试使用手工 OHLCV。展示测试还读取已提交的信号样例。真实行情 E2E 独立运行，下载命令会打印缓存行数和日期、复权元数据。
+
+P4 使用本地缓存跑通读取、展示指标、signals.csv 回放与 HTML 生成：
+
+```bash
+./scripts/run_all.sh 600519.SH 贵州茅台
+```
+
+A 股数据与规则专项检查：
+
+```bash
+../.venv-vnpy/bin/python -m scripts.check_a_share
+```
+
+## 展示页面
+
+生成页面的命令见“展示层快照”。在 macOS 可用 `open examples/triple-screen.html` 打开，也可在项目根目录运行 `../.venv-vnpy/bin/python -m http.server --bind 127.0.0.1 8765`，访问 [本地页面](http://127.0.0.1:8765/examples/triple-screen.html)。浏览器需要联网加载固定版本的 Lightweight Charts CDN 脚本，行情数据已写入 HTML。
 
 ## 参数与实现范围
 
@@ -75,4 +91,14 @@ AkShare 为默认数据源。下载会联网，写入 `data/cache/`，并保存�
 
 未实现清单：`IND-07` Williams %R、`IND-08` 背离分类、`IND-10` OBV、`IND-12` 趋势线/支撑阻力均为 optional，按要求默认跳过；`IND-11` A/D 与 Herrick Payoff Index、`IND-13` K 线/形态均为 skip。原因是规格 status 非 implement，或公式/来源未核实。
 
-目前不实现网络下载以外的自动交易。VN.py CTA 成交价和 A 股撮合限制应在框架回测/执行边界继续验证；信号引擎本身只输出带来源的候选，不假设涨跌停排队成交。
+## 已知限制与风险
+
+- 当前 Sina 60 分钟历史从 2024-11-11 开始，短于日线历史；周线 EMA/MACD 可用更长日线预热，但信号只能从分钟数据范围开始。
+- 缓存没有历史 `is_st` 字段；展示页按 YAML 的板块阈值标注，并明确提示历史 ST 状态不可用。
+- SELL 信号可用于研究标记，但 `market.allow_short=false`，仓位面板不会给出开空数量。
+- 涨跌停触价显示「可能无法成交」，当前系统不模拟封板排队、滑点、成交概率或真实委托回报。
+- P4 抽样发现第 3 重价位引用滞后一日，第 2 重也有规格差异。逐笔复算与复核边界见 [P4 终验证据](docs/P4_ACCEPTANCE.md) 和 [追溯矩阵](docs/TRACEABILITY.md)。
+- 单元测试只验证手工 OHLCV 和展示规则；网络源可用性、分钟历史深度会变化。信号和复权序列仍需在目标市场进一步验收。
+- 本项目定位为研究与回测工具，不接实盘资金，不构成投资建议。
+
+指标/信号依据统一标注「依据：公开资料交叉核对，非原书直引」。没有电子书，禁止把任何内容表述为书内页码、章节或原文。

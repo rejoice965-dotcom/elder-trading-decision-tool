@@ -150,7 +150,7 @@ def build_daily_view(
     latest_limits = limit_by_date.get(last_date)
     summary = {
         "symbol": symbol,
-        "name": "贵州茅台" if symbol == "600519.SH" else symbol,
+        "name": symbol,
         "last_date": last_date,
         "last_raw_close": float(daily_last["close"]),
         "change_pct": (
@@ -186,6 +186,10 @@ def build_markers(
     markers = []
     for index, row in signals.reset_index(drop=True).iterrows():
         day = pd.Timestamp(row["timestamp"]).date().isoformat()
+        if day not in factor_by_date:
+            raise ValueError(
+                f"Signal {row['rule_id']} on {day} has no matching daily K-line"
+            )
         values = _signal_dict(row["indicator_values"])
         date_limits = limit_by_date.get(day)
         touched_limit = bool(values.get("at_price_limit", False)) or bool(
@@ -202,7 +206,7 @@ def build_markers(
                 "timestamp": pd.Timestamp(row["timestamp"]).isoformat(sep=" "),
                 "side": side,
                 "price_raw": entry,
-                "price_qfq": entry * factor_by_date.get(day, 1.0),
+                "price_qfq": entry * factor_by_date[day],
                 "rule_id": str(row["rule_id"]),
                 "trigger_rule": (
                     "前一交易日高点上方突破买入止损单"
@@ -218,7 +222,6 @@ def build_markers(
                 "limit_status": date_limits,
                 "entry_allowed": bool(values.get("entry_allowed", False)),
                 "short_entry_allowed": bool(values.get("short_entry_allowed", False)),
-                "marker_label": f"{'买' if side == 'BUY' else '卖'} {row['rule_id']} {pd.Timestamp(row['timestamp']):%H:%M}",
             }
         )
     return markers
