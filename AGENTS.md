@@ -45,7 +45,7 @@
 - 每阶段结束必须给**证据**：pytest 真实 stdout、命令输出、CSV 样例、图表文件、diff。不接受「已完成」「应该没问题」。
 - 每阶段一个 `git commit`，message 写清范围。
 - `gh` CLI 未安装：检索 GitHub 用 `curl` 调 REST API（命令见 `CODEX_PROMPTS.md` 第 5 节），不许凭记忆推荐仓库。
-- 已核实：Freqtrade 的 `plot-dataframe` / `plot-profit` 已 deprecated，用 FreqUI 或 lightweight-charts 的 `setMarkers`。
+- 图表渲染：当前底座为 VN.py，用 vnpy_ctabacktester 的 K 线图表 / 成交点标注组件，或产品侧 lightweight-charts `setMarkers` 自建 HTML；不引入其他框架底座。
 
 ## 阶段顺序
 
@@ -65,7 +65,7 @@
 ## 已定技术路线（2026-11-20 用户拍板）：路线 1 · 最小改动原型
 
 - **做法**：clone P1 选定的框架，只新增「策略文件 + 独立指标模块 + 配置」；买卖点用框架自带 UI 或 lightweight-charts `setMarkers`。
-- **不重写**框架的数据下载 / 回测 / 风控底座，白拿其 `lookahead-analysis` 等未来函数检查工具。
+- **不重写**框架的数据下载 / 回测 / 风控底座。VN.py 无内置未来函数审计工具，改用**代码审查 + 未来数据扰动测试**（见「目标市场：A 股」节）证明只用已收盘 K 线。
 - **指标与信号引擎必须写成框架无关的独立模块**（如 `elder_indicators/`），只依赖 pandas/numpy，不 import 框架专属 API，为后续升级到路线 2（自建前端）留接口。
 - 具体 GitHub 仓库由 P1 真实调研决定；`PROJECT_SELECTION.md` 产出前，P2 不得开始。
 - 后续升级路径：验证通过后把展示层替换为自建 lightweight-charts 前端，即成为完整自有软件。

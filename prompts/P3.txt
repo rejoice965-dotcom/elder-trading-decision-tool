@@ -1,12 +1,19 @@
-把 P2 的信号渲染成人能看懂的交易软件界面。
+把 P2 已验收的 A 股买卖点渲染成人能看懂的交易软件界面。
 
-1. 主图 K 线 + EMA；副图 MACD 柱状图 / Force Index / Elder-Ray / RSI，参数取 docs/indicators.yaml。
-2. 买点：K 线下方箭头 + 标签（rule_id 与触发规则）；卖点：上方箭头。点击/悬停展示完整依据：source_quote、source_url、confidence、触发时各指标数值、按 2% 法则算出的仓位与止损价。
-3. 每个依据面板顶部固定一行："依据：公开资料交叉核对，非原书直引"。禁止显示书页码或"书中原文"。
-4. 若底座是 freqtrade：官方已弃用 plot-dataframe，用 FreqUI 或自己用 lightweight-charts 的 setMarkers 渲染。
-5. 导出 examples/signals.csv + 一张静态图或可打开的 HTML 快照。
-6. 配色遵循中国市场惯例：涨红跌绿；货币符号默认 ¥。
-7. 界面顶部固定："仅供研究与回测，不构成投资建议"。
-8. A 股界面元素：股票代码与名称（如 600519.SH / 贵州茅台）、涨跌幅、涨跌停标记、停牌日留白；按沪深交易日历显示，涨红跌绿、¥。信号面板额外显示该股当日是否触及涨跌停（触及则标注「可能无法成交」，不要静默当作成交）。
+底座已确认：VN.py（vnpy/vnpy + vnpy_ctastrategy + vnpy_ctabacktester，MIT）。
+不要再重新选型、不要提出方案对比、不要停下来问底座。产品代码留在 codex-elder-trading/，
+VN.py 只作上级目录依赖，禁止把框架源码复制进产品仓库。
 
-先给界面草图/组件结构再写实现；完成后给截图或 HTML 路径及生成命令。
+输入：data/cache/600519_SH_*_{qfq,raw}.csv 与 examples/signals.csv（120 条信号，P2 已验收 17 passed）。
+本阶段只做展示层：不要重新计算信号，不要改动 elder_indicators/ 与 market_data/。
+
+1. 主图 K 线 + EMA；副图 MACD 柱状图 / Force Index / Elder-Ray / RSI。参数只读 docs/indicators.yaml 的 params: 与 market:，禁止硬编码周期或市场规则。
+2. 买点：K 线下方箭头 + 标签（rule_id 与触发规则）；卖点：上方箭头。点击/悬停展示完整依据：rule_id、source_quote、source_url、confidence、触发时各指标数值、按 2% 法则算出的仓位与止损价。
+3. 每个依据面板顶部固定一行："依据：公开资料交叉核对，非原书直引"。禁止显示书页码、"书中原文""原著写道"；source_page 为 null 不得渲染成任何书内定位。
+4. 渲染方案二选一并给出理由：用 VN.py 的 K 线图表组件（vnpy_ctabacktester 的 CandleChartDialog / 成交点标注）做桌面端，或产品侧自建 lightweight-charts 前端用 setMarkers 导出可打开的 HTML。不要引入新的第三方框架底座。
+5. 导出可打开的 HTML 快照或静态图，更新 examples/（保留已有 signals.csv 与 signal-validation.html，新增界面产物），并给出可复现的生成命令。
+6. 配色遵循中国市场惯例：涨红跌绿；货币符号默认 ¥；界面顶部固定："仅供研究与回测，不构成投资建议"。
+7. A 股界面元素：股票代码与名称（如 600519.SH / 贵州茅台）、涨跌幅、涨跌停标记、停牌日留白，按沪深交易日历显示；信号面板额外显示该股当日是否触及涨跌停（触及则标注「可能无法成交」，不要静默当作成交）。
+8. 保持框架无关：界面层只读 signals.csv / 缓存 CSV 与 docs/indicators.yaml，不得把框架专属 API 引入指标引擎。
+
+先给界面草图/组件结构再写实现，等我确认后再写代码；完成后给截图或 HTML 路径及生成命令、pytest 输出、diff 与 git commit。

@@ -92,7 +92,7 @@ codex exec --sandbox workspace-write "$(cat prompts/P4.txt)"   # 验收
 
 据此已同步修改 `AGENTS.md`、`prompts/P1.txt`、`prompts/P2.txt`：P1 不再输出三条备选，改为主攻策略/回测框架方向并给出具体仓库的 clone 路径与策略文件位置；P2 增加「独立指标模块」的架构约束。
 
-**P1 跑完后还有一层决策**：具体用哪个仓库由真实调研决定（已定 Jesse，见 `PROJECT_SELECTION.md`）。仍待定：RSI 周期（14 还是二手资料的 7）、回测区间；**目标市场已定为 A 股**（见 1.4 节）。
+**P1 选型已关闭**：底座已定为 **VN.py**（见 `PROJECT_SELECTION.md` 与 1.4 节），P2 已实现、长区间 A 股信号已验收。仍待用户决策的只剩：RSI 周期（默认 14 还是二手资料的 7）、optional 指标是否纳入后续版本；**目标市场已定为 A 股**（见 1.4 节）。
 
 ### 1.3 curl 检索实测（2026-11-20，已跑通）
 
@@ -139,7 +139,7 @@ codex exec --sandbox workspace-write "$(cat prompts/P4.txt)"   # 验收
 
 三类方向各找 2~3 个：策略/回测框架（freqtrade、backtrader、vectorbt、jesse、vn.py）、图表界面（lightweight-charts 系、FreqUI）、指标计算库（TA-Lib、pandas-ta、technical）。
 
-⚠️ 已核实：Freqtrade 官方把 `plot-dataframe` / `plot-profit` 标记为 **deprecated**、推荐 FreqUI（https://www.freqtrade.io/en/stable/plotting/）。别在废弃命令上花时间。
+⚠️ 选型期历史备注（当前底座为 VN.py，此条不再适用）：Freqtrade 官方把 `plot-dataframe` / `plot-profit` 标记为 **deprecated**、推荐 FreqUI（https://www.freqtrade.io/en/stable/plotting/）。别在废弃命令上花时间。
 
 **打分维度（1~5）**：多周期 / 自定义指标 / 买卖点可视化 / 回测 / 活跃度 / 二次开发成本 / 与 Python+pandas 契合 / **最小改动成本（路线 1 重点）** → 加权总分 → 选 1 个 + 200 字理由 + 淘汰原因。
 
@@ -226,17 +226,25 @@ codex exec --sandbox workspace-write "$(cat prompts/P4.txt)"   # 验收
 ### P3 — 把买卖点标出来，做成能看的软件界面
 
 ```
-把 P2 的信号渲染成人能看懂的交易软件界面。
+把 P2 已验收的 A 股买卖点渲染成人能看懂的交易软件界面。
 
-1. 主图 K 线 + EMA；副图 MACD 柱状图 / Force Index / Elder-Ray / RSI，参数取 docs/indicators.yaml。
-2. 买点：K 线下方箭头 + 标签（rule_id 与触发规则）；卖点：上方箭头。点击/悬停展示完整依据：source_quote、source_url、confidence、触发时各指标数值、按 2% 法则算出的仓位与止损价。
-3. 每个依据面板顶部固定一行："依据：公开资料交叉核对，非原书直引"。禁止显示书页码或"书中原文"。
-4. 若底座是 freqtrade：官方已弃用 plot-dataframe，用 FreqUI 或自己用 lightweight-charts 的 setMarkers 渲染。
-5. 导出 examples/signals.csv + 一张静态图或可打开的 HTML 快照。
-6. 配色遵循中国市场惯例：涨红跌绿；货币符号默认 ¥。
-7. 界面顶部固定："仅供研究与回测，不构成投资建议"。
+底座已确认：VN.py（vnpy/vnpy + vnpy_ctastrategy + vnpy_ctabacktester，MIT）。
+不要再重新选型、不要提出方案对比、不要停下来问底座。产品代码留在 codex-elder-trading/，
+VN.py 只作上级目录依赖，禁止把框架源码复制进产品仓库。
 
-先给界面草图/组件结构再写实现；完成后给截图或 HTML 路径及生成命令。
+输入：data/cache/600519_SH_*_{qfq,raw}.csv 与 examples/signals.csv（120 条信号，P2 已验收 17 passed）。
+本阶段只做展示层：不要重新计算信号，不要改动 elder_indicators/ 与 market_data/。
+
+1. 主图 K 线 + EMA；副图 MACD 柱状图 / Force Index / Elder-Ray / RSI。参数只读 docs/indicators.yaml 的 params: 与 market:，禁止硬编码周期或市场规则。
+2. 买点：K 线下方箭头 + 标签（rule_id 与触发规则）；卖点：上方箭头。点击/悬停展示完整依据：rule_id、source_quote、source_url、confidence、触发时各指标数值、按 2% 法则算出的仓位与止损价。
+3. 每个依据面板顶部固定一行："依据：公开资料交叉核对，非原书直引"。禁止显示书页码、"书中原文""原著写道"；source_page 为 null 不得渲染成任何书内定位。
+4. 渲染方案二选一并给出理由：用 VN.py 的 K 线图表组件（vnpy_ctabacktester 的 CandleChartDialog / 成交点标注）做桌面端，或产品侧自建 lightweight-charts 前端用 setMarkers 导出可打开的 HTML。不要引入新的第三方框架底座。
+5. 导出可打开的 HTML 快照或静态图，更新 examples/（保留已有 signals.csv 与 signal-validation.html，新增界面产物），并给出可复现的生成命令。
+6. 配色遵循中国市场惯例：涨红跌绿；货币符号默认 ¥；界面顶部固定："仅供研究与回测，不构成投资建议"。
+7. A 股界面元素：股票代码与名称（如 600519.SH / 贵州茅台）、涨跌幅、涨跌停标记、停牌日留白，按沪深交易日历显示；信号面板额外显示该股当日是否触及涨跌停（触及则标注「可能无法成交」，不要静默当作成交）。
+8. 保持框架无关：界面层只读 signals.csv / 缓存 CSV 与 docs/indicators.yaml，不得把框架专属 API 引入指标引擎。
+
+先给界面草图/组件结构再写实现，等我确认后再写代码；完成后给截图或 HTML 路径及生成命令、pytest 输出、diff 与 git commit。
 ```
 
 ### P4 — 验收与交付（要证据，不要结论）
@@ -246,11 +254,12 @@ codex exec --sandbox workspace-write "$(cat prompts/P4.txt)"   # 验收
 
 1. 跑通"数据加载 -> 指标计算 -> 信号 -> 出图"的一条命令，贴命令和真实 stdout。
 2. pytest 全绿，贴用例数与输出；确认每个 implement 指标都有数值断言测试。
-3. 未来函数检查：写代码或用框架工具（如 freqtrade lookahead-analysis / recursive-analysis）证明只用已收盘数据，贴结果。
+3. 未来函数检查：VN.py 无内置审计工具，用代码审查（grep `shift(-n)`、未收盘 K 线）+ tests/ 已有的未来数据扰动测试 `test_future_data_perturbation_does_not_change_past_signals` 证明只用已收盘数据，贴 pytest 真实输出。
 4. 抽 3 个买卖点，逐个对照 docs/INDICATORS.md 的公式与 source_quote，说明触发原因、属于第几重滤网、止损价与 2% 仓位怎么算的。同时确认没有任何一处出现伪造的书页码。
 5. 生成 docs/TRACEABILITY.md：id -> source_url/quote -> 代码文件/函数 -> 测试用例 -> 信号 rule_id。对不上就标红说明。
 6. README：安装运行、目录说明、参数在哪改、已知限制、未实现清单、"非原书直引"声明、风险声明。
-7. git 提交，message 写清范围。
+7. A 股专项验收：复权价连续性检查、停牌日不产生信号、涨跌停无法成交的买点应标记而非静默成交、T+1 约束、周线与 60 分钟线由日线/分钟线正确构造（每日 4 根）、沪深交易日历对齐；逐项贴检查结果。
+8. git 提交，message 写清范围。
 
 最后 5 行总结：实现了什么、验证了什么、还差什么、下一步建议、需要我决策的问题。
 ```

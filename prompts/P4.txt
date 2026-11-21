@@ -2,7 +2,7 @@
 
 1. 跑通"数据加载 -> 指标计算 -> 信号 -> 出图"的一条命令，贴命令和真实 stdout。
 2. pytest 全绿，贴用例数与输出；确认每个 implement 指标都有数值断言测试。
-3. 未来函数检查：写代码或用框架工具（如 freqtrade lookahead-analysis / recursive-analysis）证明只用已收盘数据，贴结果。
+3. 未来函数检查：VN.py 无内置审计工具，用代码审查（grep `shift(-n)`、未收盘 K 线）+ tests/ 已有的未来数据扰动测试 `test_future_data_perturbation_does_not_change_past_signals` 证明只用已收盘数据，贴 pytest 真实输出。
 4. 抽 3 个买卖点，逐个对照 docs/INDICATORS.md 的公式与 source_quote，说明触发原因、属于第几重滤网、止损价与 2% 仓位怎么算的。同时确认没有任何一处出现伪造的书页码。
 5. 生成 docs/TRACEABILITY.md：id -> source_url/quote -> 代码文件/函数 -> 测试用例 -> 信号 rule_id。对不上就标红说明。
 6. README：安装运行、目录说明、参数在哪改、已知限制、未实现清单、"非原书直引"声明、风险声明。
