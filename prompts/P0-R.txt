@@ -1,1 +1,37 @@
-读取用户提供的《以交易为生》电子版，逐条给 docs/INDICATORS.md 补 章节/页码/原文短引(<=50字)，把 confidence 升级为 book-confirmed，source_page 从 null 改为真实页码。发现与现有规格冲突的，列成差异表让我决策，不要静默覆盖。同步更新 docs/indicators.yaml 与界面上的来源标注（去掉"非原书直引"提示）。
+P0-R（纸质书版 / Mode B-P）：用纸质《以交易为生》回填书内定位。
+
+前提：用户只有纸质书，没有电子版。唯一允许的书内事实来源是
+docs/book_references.csv 中由用户亲自填写的行，或用户提供的书页照片/扫描件
+（照片只用于核对文字，不得由模型自行推断页码）。
+
+绝对禁止：
+- 凭模型记忆、网络搜索或"行业惯例"补写章节号、页码、"书中原文""原著写道"；
+- 把公开资料的 source_quote 改头换面伪装成书中原文；
+- 在用户未填写的行上升级 confidence 或改动 source_page。
+
+升级规则（逐行独立）：
+- 仅当该行 book_edition、chapter、page、quote_50chars 四项齐全，
+  且 quote_50chars ≤ 50 字、与书中该页文字一致时，
+  才把该条 confidence 升级为 book-confirmed、source_page 从 null 改为真实页码，
+  并在 docs/INDICATORS.md 记录 book_edition / chapter / page / 短引。
+- 任缺一项 → 保持原 confidence 与 source_page=null，在回填报告里列为「待补」。
+- 版本必须逐行一致：中英文版、不同版次/印次页码不同，禁止混用；
+  若同一 spec 出现两个版本，列差异表让我决策，不静默覆盖。
+
+冲突处理：书中内容与现有规格冲突（参数、公式、条件）时，列差异表让我决策，
+不要静默覆盖；未经确认前代码参数与信号一律不变。
+
+同步范围：docs/INDICATORS.md、docs/indicators.yaml、INDICATOR_SPEC.md 三处一致；
+docs/TRACEABILITY.md 的对应行标注「书内确认」并保留公开资料来源链接。
+
+界面标注（渐进，不许一刀切）：
+- 只有全部 21 条都升级为 book-confirmed 时，才去掉界面顶部
+  「依据：公开资料交叉核对，非原书直引」的全局提示；
+- 部分回填时全局提示保留，仅在已确认条目的依据面板里追加
+  「书内确认：<版本> 第 X 章 第 Y 页」；
+- 未确认条目继续显示公开资料来源与 confidence。
+- 界面禁止渲染任何未填的 source_page，禁止显示"书中原文"字样。
+
+本阶段只改文档与展示标注，不改指标/信号/风控代码，不重新生成 signals.csv。
+完成后给：回填行数 / 待补行数 / 冲突差异表 / 三份规格 diff / pytest 输出 / git commit。
+先给我回填计划再动手。
