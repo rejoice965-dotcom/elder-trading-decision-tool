@@ -48,6 +48,15 @@ AkShare 为默认数据源。下载会联网，写入 `data/cache/`，并保存�
 
 `examples/signals.csv` 和 `examples/signal-validation.html` 是 600519.SH 的长区间验证快照。当前缓存日线覆盖 2022-01-04 15:00 至 2026-11-20 15:00，共 1,182 根。Sina 60 分钟线实际范围为 2024-11-11 14:00 至 2026-11-20 15:00，共 1,970 根，形成 492 个完整交易日；数据源没有返回更早的分钟历史，所以信号最早从 2024-12-12 出现。完整来源范围与抓取时间记录在 `data/cache/600519_SH_metadata.json`。
 
+## 展示层快照
+
+用已有 qfq/raw 缓存、`examples/signals.csv` 和 YAML 配置生成 Lightweight Charts HTML。生成过程不重新下载行情，也不重算信号。HTML 从固定版本的 unpkg CDN 加载图表脚本，打开页面时需要网络访问该静态资源。
+
+```bash
+../.venv-vnpy/bin/python -m presentation.build_dashboard \
+  --symbol 600519.SH --name 贵州茅台 --output examples/triple-screen.html
+```
+
 回放程序读取缓存文件，不会在指标计算期间访问网络。指标使用 qfq OHLCV，订单价和涨跌停校验使用 raw OHLCV。60 分钟线不补造午休/停牌 bar。日线仅由配置要求的完整四根 60 分钟 bar 聚合；周线按 XSHG 交易日历，仅保留完整交易周。
 
 ## 测试
