@@ -1,0 +1,7 @@
+akshare
+baostock
+exchange-calendars
+numpy>=2.2.3,<2.3
+pandas>=2.2.3,<3.0
+PyYAML
+pytest

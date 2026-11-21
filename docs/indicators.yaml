@@ -25,7 +25,7 @@ params:
   overbought: 70
   tf_high: "1w"
   tf_mid: "1d"
-  tf_low: "1h"
+  tf_low: "60m"
   tf_ratio: 5
   breakout_offset_ticks: 1
   risk_per_trade: 0.02
@@ -36,14 +36,47 @@ params:
 market:
   name: "A-share"
   data_source: "akshare"        # 备选 baostock / tushare / csv
-  adjust: "qfq"                 # 前复权；hfq / none 备选。回测口径须在 P2 计划里确认
+  adjust: "qfq"                 # 指标使用前复权数据
+  adjustment_tracks:
+    indicators: "qfq"
+    execution: "none"
+    limit_validation: "none"
   symbol_format: "600519.SH"    # 6 位代码 + 交易所后缀
   t_plus_1: true
-  board_limit_pct: 0.10         # 主板；创业板/科创板 0.20、北交所 0.30、ST 0.05
+  cash_only: true
+  allow_short: false
+  board_limit_pct:
+    main_board: 0.10
+    chinext: 0.20
+    star_market: 0.20
+    beijing_stock_exchange: 0.30
+    st: 0.05
+  board_code_prefixes:
+    main_board: ["600", "601", "603", "605", "000", "001", "002", "003"]
+    chinext: ["300", "301"]
+    star_market: ["688", "689"]
+    beijing_stock_exchange: ["4", "8", "920"]
   min_lot: 100
+  price_tick: 0.01
   trading_calendar: "SSE"
+  calendar_name: "XSHG"
+  week_starting_day: "MON"
+  week_ending_day: "FRI"
   intraday_bars_per_day: 4      # 每日 4 根 60 分钟 K
+  intraday_bar_close_times: ["10:30", "11:30", "14:00", "15:00"]
   skip_suspended: true
+  trading_sessions:
+    morning_open: "09:30"
+    morning_close: "11:30"
+    afternoon_open: "13:00"
+    afternoon_close: "15:00"
+  resume_signal_policy:
+    first_60m_bar_must_be_closed: true
+    skip_suspended_session: true
+  cache:
+    format: "csv"
+    directory: "data/cache"
+  data_date_policy: "Store fetch timestamp and requested start/end dates in each cache sidecar."
 
 sources:
   S1: "https://cmtassociation.org/wp-content/uploads/2025/08/MTA04May.pdf"
