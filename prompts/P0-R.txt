@@ -1,20 +1,22 @@
-P0-R（纸质书版 / Mode B-P）：用纸质《以交易为生》回填书内定位。
+P0-R 第二轮（纸质书版 / Mode B-P）：增量回填第二批已确认书内定位。
 
 ====================================================================
 【本轮已决状态 — 直接执行，不要再问我、不要再输出计划等批准】
 ====================================================================
 
-- 用户已于 2026-11-21 17:42 逐行确认 docs/book_references.csv 的全部 32 行
-  引文草稿及 book_edition 版本字符串；notes 已由「草稿待用户确认」统一改为
-  「用户已确认 2026-11-21 17:42」。下方「照片路线」里要求「先给用户确认」
-  的前置条件**已经满足**，本轮直接执行回填。
-- 用户已「按建议」拍板差异表 D1~D8 全部 8 项，详见
-  docs/BOOK_BACKFILL_DECISIONS.md。**不要重新列差异表、不要停下来问、
-  不要静默改代码或参数**。D1~D8 的净效果是本期零代码改动、零参数改动。
-- 回填计划已于 2026-11-21 17:20 给出并经用户确认，本阶段不再要求「先给计划」。
-- 本轮是**部分回填**：21 条规格中 15 条有书内依据，6 条仍无
-  （IND-04、IND-07、IND-10、IND-12、IND-13、RISK-03）。
-  这 6 条保持原 confidence 与 source_page=null，在回填报告里列为「待补」。
+- 第一轮已完成：commit `cb8ee47` 回填 15 条规格 / 32 行引文，
+  `pytest -q` 28 passed，界面全局「非原书直引」提示保留。
+- 用户已于 2026-11-21 19:22 逐行确认**新增的 9 行**引文草稿
+  （notes 标记「用户已确认 2026-11-21 19:22」）；此前 32 行标记
+  「用户已确认 2026-11-21 17:42」。CSV 现共 41 行已确认引文、0 行待确认。
+  下方「照片路线」里「先给用户确认」的前置条件**已经满足**，直接执行。
+- 累计覆盖 **18 / 21 条规格**；仍无书内依据、保持 `source_page=null` 的只剩
+  **3 条**：IND-04（Elder-Ray）、IND-07（Williams %R）、RISK-03（50% 法则）。
+- 用户已「按建议」拍板差异表 D1~D8（见 `docs/BOOK_BACKFILL_DECISIONS.md`）。
+  **不要重新列差异表、不要停下来问、不要静默改代码或参数**。
+  ⚠️ D9（Elder 弃用趋势线）与 D10（Elder 否定经典图表形态）是本批新发现的
+  **待拍板候选**，用户尚未拍板 → **本轮不处理、不据此改任何 status 或代码**，
+  仅在 `docs/BOOK_BACKFILL_DECISIONS.md` 保留记录。
 - 版本（版权页逐字抄录，用户已确认）：
   《以交易为生》（原书第2版），The New Trading for a Living，
   [美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，
@@ -23,13 +25,36 @@ P0-R（纸质书版 / Mode B-P）：用纸质《以交易为生》回填书内�
   `book-confirmed(第2版)` 并注明版本，禁止伪装成第1版证据、禁止混用两版页码。
 
 ====================================================================
+【本轮是增量回填 — 关键，不要重做第一轮】
+====================================================================
+
+只处理本次新增 9 行引文涉及的 **5 个 spec**，不要改动第一轮已经回填好的 15 条：
+
+| spec | 本轮新增行 | 是否已回填过 | 动作 |
+|---|---|---|---|
+| IND-09 成交量 | p.155 ×1 | 是（p.164） | **合并**：在已有「书内确认」小节补第 2 个页码与短引 |
+| IND-11 A/D | p.159 ×1 | 是（p.162） | **合并**：同上，并在 notes 记 A/D 公式印于 p.159 |
+| IND-10 OBV | p.156、p.158 共 2 行 | 否 | **首次回填**，status 仍 `optional` |
+| IND-12 趋势线/支撑阻力 | p.81×2、p.82 共 3 行 | 否 | **首次回填**，status 仍 `optional` |
+| IND-13 缺口/K线形态 | p.73 ×2 | 否 | **首次回填**，status 仍 `skip` |
+
+- 「合并」= 同一 spec 在书中多处出现时，把全部页码、章节、短引**累加**记录，
+  不要只保留一处、也不要静默丢弃；报告里列出该条的全部页码。
+- IND-10 / IND-12 / IND-13 是 optional/skip：**回填只记录书内定位**
+  （`book_*` 字段 + `source_page`），**不改 status、不改代码、不新建实现**。
+- 界面：`IND-10/12/13` 与补行的 `IND-09/11` 都不产生信号 rule_id，
+  因此**不需要**为它们造 marker 或改信号；只按已有 rule_id 逻辑保持现状。
+  若第一轮界面已能显示书内确认标注，本轮不必改动展示层代码
+  （除非确实需要重新生成 HTML，改完必须 `pytest -q` 仍是 28 passed）。
+
+====================================================================
 【事实源与绝对禁止】
 ====================================================================
 
-唯一允许的书内事实来源是 docs/book_references.csv 中用户已确认的行，
-以及 docs/book_photos/ 里的书页照片。CSV 里的 quote_50chars 必须**逐字抄用**：
+唯一允许的书内事实来源是 `docs/book_references.csv` 中用户已确认的行，
+以及 `docs/book_photos/` 里的书页照片。CSV 里的 quote_50chars 必须**逐字抄用**：
 不得改写、润色、合并、简写、补字，不得把公开资料的 source_quote 改头换面
-伪装成书中原文。
+伪装成书中原文，不得把 p.363 参考文献条目当正文引文。
 
 绝对禁止：
 - 凭模型记忆、网络搜索或"行业惯例"补写章节号、页码、"书中原文""原著写道"；
@@ -43,107 +68,90 @@ P0-R（纸质书版 / Mode B-P）：用纸质《以交易为生》回填书内�
 - 没有版本照片时 book_edition 留空，对应行一律不得升级 confidence；
 - 从照片整理出的内容只是草稿，必须先逐行给用户确认，确认后才写入 CSV；
 - 用户确认前不得执行任何回填、不得改动任何文档。
-- 同一 spec 在书中多处出现：可复制该行分别填写，回填时合并记录并在报告里
-  列出全部页码，不要只保留一处、也不要静默丢弃。
 
 ====================================================================
 【硬约束 — 保护已收官的代码与 28 项测试】
 ====================================================================
 
-1. 不改 elder_indicators/、market_data/、strategy_adapters/ 下任何 .py；
-   不重新生成 examples/signals.csv 或 data/cache/*_signals.csv；
-   不改 docs/indicators.yaml 的 params: 与 market: 任何数值。
+1. 不改 `elder_indicators/`、`market_data/`、`strategy_adapters/` 下任何 `.py`；
+   不重新生成 `examples/signals.csv` 或 `data/cache/*_signals.csv`；
+   不改 `docs/indicators.yaml` 的 `params:` 与 `market:` 任何数值。
 
 2. 代码里 confidence 与 source_page 是硬编码的：
    `elder_indicators/signals.py:210` → `candidates["confidence"] = "A"`
    及 `candidates["source_page"] = None`；
    `tests/test_signals_and_risk.py:62`、`tests/test_presentation.py:47/94`
    断言信号的 confidence == "A"。
-   ⇒ **不要覆写 YAML specs 里的 `confidence: A`**（它表示公开资料交叉确认等级，
-     与信号里的 "A" 保持语义一致）。改用**新增字段**记录书内确认：
+   ⇒ **不要覆写 YAML specs 里的 `confidence`**（它表示公开资料交叉确认等级，
+     与信号里的 "A" 保持语义一致；A/B/C 全部保留原值）。沿用第一轮的
+     **新增字段**方式记录书内确认：
        book_confirmed: "第2版"
        book_edition: <CSV 里的版本字符串>
        book_chapter: <CSV 里的 chapter>
        book_page: <CSV 里的 page>
        book_quote: <CSV 里的 quote_50chars，逐字>
-     并把该条 `source_page` 从 null 改为真实页码（YAML 纯文档字段，代码不读）。
-     未确认的 6 条不新增这些字段，source_page 保持 null。
+     并把该条 `source_page` 更新为**合并后的全部真实页码**（YAML 纯文档字段，代码不读）。
+     未确认的 3 条不新增这些字段，`source_page` 保持 null。
 
-3. HTML 里禁止出现字符串 "source_page"、"书中原文"、"原著写道"
-   （tests/test_presentation.py 有断言）。依据面板用中文追加一行：
+3. HTML 里禁止出现字符串 `source_page`、`书中原文`、`原著写道`
+   （`tests/test_presentation.py` 有断言）。依据面板只用中文：
      「书内确认：《以交易为生》（原书第2版）第 X 章 第 Y 页」
-   不得写「书中原文」字样。
 
 4. 全局 `presentation/dashboard.py::PROVENANCE`
    「依据：公开资料交叉核对，非原书直引」**必须保留**
-   （因为 21 条未全部确认）。仅已确认条目的依据面板追加上述中文标注。
-   `DISCLAIMER` 不动。允许改展示层代码，但改完必须 pytest 仍是 28 passed。
+   （21 条只确认 18 条）。`DISCLAIMER` 不动。
 
 5. ⚠️ 不要删除「禁止编造页码/章节号/书内原文」这条铁律：
-   还有 6 条未确认，AGENTS.md 的 Mode B 铁律对未确认条目继续有效。
+   还有 3 条未确认，`AGENTS.md` 的 Mode B 铁律对未确认条目继续有效。
    P1~P4 阶段提示词快照（含 P3「禁止显示书页码」）是历史记录，不要改。
 
 升级规则（逐行独立）：
 - 仅当该行 book_edition、chapter、page、quote_50chars 四项齐全，
-  且 quote_50chars ≤ 50 字、与书页照片一致时，才按上面第 2 条新增
-  book_* 字段并把 source_page 改为真实页码，在 docs/INDICATORS.md
-  增加「书内确认」小节记录 book_edition / chapter / page / 短引。
+  且 quote_50chars ≤ 50 字、与书页照片一致时，才按上面第 2 条新增/合并
+  book_* 字段并把 source_page 改为真实页码，在 `docs/INDICATORS.md`
+  的「书内确认」小节记录 book_edition / chapter / page / 短引。
 - 任缺一项 → 保持原 confidence 与 source_page=null，报告里列「待补」。
 - 版本冲突（同一 spec 出现两个版本）→ 停下来报告，不静默覆盖。
 
 ====================================================================
-【必须同步的全局声明 — 否则文档自相矛盾】
+【必须同步的全局声明 — 核对一致性，别漏改数字】
 ====================================================================
 
-部分回填后，以下「source_page 一律为 null / 全为 null」的**全局**措辞会失效，
-必须改成「已确认条目填真实页码，其余仍为 null；禁止编造」的口径：
+第一轮已把「source_page 一律为 null」改成部分回填口径；本轮要同步的是**数字**：
+15 条 → 18 条、32 行 → 41 行、6 条待补 → 3 条、67 张照片 → 85 张。
 
-- docs/indicators.yaml 第 2 行注释、meta.source_page_policy
-- docs/INDICATORS.md 顶部诚实声明、汇总表「非 null 条目 0」、
-  第六节「待确认 / 需用户决策」第 4 条
-- INDICATOR_SPEC.md 顶部诚实声明、第六节硬性要求第 1 条与第 4 条
-- docs/TRACEABILITY.md 首段「所有 source_page 均为 null」
-- CODEX_PROMPTS.md 的 P0-R 快照与第 4 节验收总清单第一条（本轮已预同步为部分回填口径，核对一致性即可）
-- AGENTS.md 的「当前模式」段（本轮已加入 P0-R 部分回填例外，核对一致性即可；
-  **不要删掉「严禁编造」的铁律**，它对 6 条待补条目继续有效）
+- `docs/indicators.yaml` 的 `meta`（若含 counts/provenance 描述）
+- `docs/INDICATORS.md` 汇总表与「待确认」节
+- `INDICATOR_SPEC.md` 诚实声明段
+- `docs/TRACEABILITY.md` 首段及对应行标注
+- `AGENTS.md`「当前模式」段、`CODEX_PROMPTS.md` P0-R 快照、`README.md` 状态段
+- `docs/BOOK_BACKFILL_DECISIONS.md` 确认范围表
 
-⚠️ 只改「全局一律为 null」这类**事实描述**，不要删掉禁止伪造的铁律，
+⚠️ 只改数字与事实描述，不要删掉禁止伪造的铁律，
    也不要改 P0~P4 各阶段提示词快照里的当期约束（历史记录）。
 
 ====================================================================
 【同步范围与本期具体动作】
 ====================================================================
 
-三处规格保持一致：docs/INDICATORS.md、docs/indicators.yaml、INDICATOR_SPEC.md。
-docs/TRACEABILITY.md 对应行标注「书内确认（第2版）」并**保留**原公开资料来源链接。
+三处规格保持一致：`docs/INDICATORS.md`、`docs/indicators.yaml`、`INDICATOR_SPEC.md`。
+`docs/TRACEABILITY.md` 对应行标注「书内确认（第2版）」并**保留**原公开资料来源链接。
 
-D1（只改文档）：INDICATOR_SPEC.md 与 docs/INDICATORS.md 的「排除项」表里，
-把 Impulse System 的理由改为「第2版正文 p.236-242 存在，按用户决策本期仍不实现，
-列二期 optional 候选」；41 节通道交易系统（p.242 起）同理记录正文位置。
-status 不变、代码不变、不新建 spec 条目。
-
-D4 / D6 / D8：在 IND-06 / IND-05 / RISK-02 对应规格下增加「第2版差异」说明句
-（书内口径 vs 现参数），**不改参数值**。
-D7：SYS-04 的 notes/说明补 p.167「2日EMA可以很好地与三重滤网交易系统相适应」
-与 p.229 的书内依据，不改实现。
-D2 / D3 / D5：本期不改代码不改参数，仅在 docs/BOOK_BACKFILL_DECISIONS.md
-已有记录，无需额外动作。
-
-界面：presentation/dashboard.py 的 build_markers 按 rule_id 关联已确认规格，
-追加中文书内确认标注；重新生成 examples/triple-screen.html。
+D1 / D4 / D6 / D7 / D8 已在第一轮处理完，本轮**不要重做**。
+D9 / D10 未拍板，本轮不动。
 
 ====================================================================
 【完成后交付（贴真实输出，不要复述）】
 ====================================================================
 
-1. 回填行数（应为 15 条 / 32 行引文）、待补行数（应为 6 条），
-   并列出 15 条 spec_id 与 6 条待补 spec_id。
-2. 三份规格 diff + docs/TRACEABILITY.md diff + 展示层 diff。
+1. 本轮增量回填：新增引文 9 行 / 涉及 5 个 spec（列出 spec_id）；
+   累计覆盖 **18 条 / 41 行**；待补 **3 条**（IND-04、IND-07、RISK-03）。
+2. 三份规格 diff + `docs/TRACEABILITY.md` diff（若有展示层改动也贴）。
 3. `../.venv-vnpy/bin/python -m pytest -q` 真实 stdout（必须 28 passed）。
-4. 确认项自查：`signals.csv` 未被改动（贴 git diff --stat 或明确说明）、
-   params:/market: 数值未变、6 条仍 source_page=null、
-   HTML 里 grep 不到 "source_page"/"书中原文"、
+4. 确认项自查：`signals.csv` 未被改动、`params:`/`market:` 数值未变、
+   3 条仍 `source_page=null`、`confidence` 仍 A/B/C 原值、
+   HTML 里 grep 不到 `source_page`/`书中原文`、
    全局「非原书直引」提示仍在。
-5. git commit，message 写清范围。
+5. `git commit`，message 写清「第二轮增量回填」范围。
 6. 最后 5 行总结：回填了什么、验证了什么、还差什么、下一步建议、
-   是否还有需要用户决策的问题（应为「无」）。
+   是否还有需要用户决策的问题（D9/D10 尚未拍板，如实写「有，2 项」）。
