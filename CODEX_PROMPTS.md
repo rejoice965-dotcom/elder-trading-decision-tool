@@ -266,11 +266,11 @@ VN.py 只作上级目录依赖，禁止把框架源码复制进产品仓库。
 
 ### P0-R — 纸质书回填（Mode B-P，当前阶段）
 
-> **状态（2026-11-21 19:28）**：用户只有纸质书，已拍来 85 张书页照片，
-> 已逐行确认 `docs/book_references.csv` 的 41 行引文草稿与版本字符串（两批：17:42 确认 32 行、19:22 确认 9 行）；
-> 差异表 D1~D10 已全部「按建议」拍板（D9 趋势线降级、D10 维持 skip），见 `docs/BOOK_BACKFILL_DECISIONS.md`。
-> 完整可执行提示词见 **`prompts/P0-R.txt`**（第二轮增量版，直接发给 Codex，不要再给计划、不要再问）。
-> 累计覆盖 **18 条 / 41 行**，仍为 null 的只剩 3 条（IND-04、IND-07、RISK-03）；全局「非原书直引」提示保留。
+> **状态（2026-11-21 20:03）**：用户只有纸质书，已拍来 100 张书页照片，
+> 已逐行确认 `docs/book_references.csv` 的 44 行引文草稿与版本字符串（三批：17:42 确认 32 行、19:22 确认 9 行、20:03 确认 RISK-03 3 行）；
+> 差异表 D1~D11 已全部「按建议」拍板（D9 趋势线降级、D10 维持 skip、D11 浮盈保护比例保持 0.50），见 `docs/BOOK_BACKFILL_DECISIONS.md`。
+> 完整可执行提示词见 **`prompts/P0-R.txt`**（最终轮合并版：第二、三批一次回填，直接发给 Codex，不要再给计划、不要再问）。
+> 累计覆盖 **19 条 / 44 行**，仍为 null 的只剩 2 条（IND-04、IND-07，第 2 版正文无独立小节，永久保留）；全局「非原书直引」提示保留。
 
 ```
 用纸质《以交易为生》（原书第2版，机工社 2017.6 第1版 / 2020.6 第8次印刷，
@@ -279,7 +279,7 @@ ISBN 978-7-111-56972-5）回填书内定位。事实源只能是 docs/book_refer
 已确认条目新增 book_confirmed/book_edition/book_chapter/book_page/book_quote
 字段并把 source_page 改为真实页码；保留原 confidence: A（信号里硬编码为 A，
 覆写会挂 28 项测试）。不改指标/信号/风控代码、不重新生成 signals.csv、
-不改 params:/market: 数值。D1~D8 差异已由用户拍板，不要重新列差异表。
+不改 params:/market: 数值。D1~D11 差异已由用户拍板，不要重新列差异表。
 同步 docs/INDICATORS.md、docs/indicators.yaml、INDICATOR_SPEC.md、
 docs/TRACEABILITY.md 及「已确认条目填真实页码、未确认条目保持 null」的部分回填口径；
 界面仅对已确认条目追加「书内确认：《以交易为生》（原书第2版）第 X 章 第 Y 页」。
