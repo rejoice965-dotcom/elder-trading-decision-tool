@@ -182,6 +182,7 @@ def build_markers(
     limit_by_date: dict[str, dict[str, Any]],
     *,
     market: dict[str, Any],
+    book_confirmations: dict[str, dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     markers = []
     for index, row in signals.reset_index(drop=True).iterrows():
@@ -196,6 +197,18 @@ def build_markers(
             date_limits and date_limits["touched"]
         )
         side = str(row["side"])
+        confirmation = (book_confirmations or {}).get(str(row["rule_id"]))
+        book_note = None
+        if confirmation:
+            chapters = "；".join(confirmation["book_chapter"])
+            pages = "、".join(
+                f"第{page.removeprefix('p.')}页"
+                for page in confirmation["book_page"]
+            )
+            book_note = (
+                f"书内确认：《以交易为生》（原书第2版）"
+                f"{chapters} {pages}"
+            )
         stop_key = "previous_day_low_raw" if side == "BUY" else "previous_day_high_raw"
         entry = float(row["price"])
         stop = values.get(stop_key)
@@ -208,6 +221,7 @@ def build_markers(
                 "price_raw": entry,
                 "price_qfq": entry * factor_by_date[day],
                 "rule_id": str(row["rule_id"]),
+                "book_confirmation": book_note,
                 "trigger_rule": (
                     "前一交易日高点上方突破买入止损单"
                     if side == "BUY"
@@ -235,6 +249,7 @@ def build_payload(
     params: dict[str, Any],
     market: dict[str, Any],
     symbol: str,
+    book_confirmations: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     rows, factors, limits, summary = build_daily_view(daily_qfq, daily_raw, market, symbol)
     indicators = calculate_display_indicators(daily_qfq, params)
@@ -272,7 +287,13 @@ def build_payload(
         "summary": summary,
         "candles": rows,
         "indicators": indicator_rows,
-        "markers": build_markers(signals, factors, limits, market=market),
+        "markers": build_markers(
+            signals,
+            factors,
+            limits,
+            market=market,
+            book_confirmations=book_confirmations,
+        ),
         "config": metadata,
         "provenance": PROVENANCE,
         "disclaimer": DISCLAIMER,

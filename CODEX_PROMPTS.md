@@ -281,7 +281,7 @@ ISBN 978-7-111-56972-5）回填书内定位。事实源只能是 docs/book_refer
 覆写会挂 28 项测试）。不改指标/信号/风控代码、不重新生成 signals.csv、
 不改 params:/market: 数值。D1~D8 差异已由用户拍板，不要重新列差异表。
 同步 docs/INDICATORS.md、docs/indicators.yaml、INDICATOR_SPEC.md、
-docs/TRACEABILITY.md 及全局「source_page 一律为 null」的旧措辞；
+docs/TRACEABILITY.md 及「已确认条目填真实页码、未确认条目保持 null」的部分回填口径；
 界面仅对已确认条目追加「书内确认：《以交易为生》（原书第2版）第 X 章 第 Y 页」。
 完成后给：回填行数 / 待补行数 / diff / pytest 28 passed / git commit。
 ```

@@ -42,6 +42,12 @@ def build_dashboard(
     config_path: Path,
 ) -> dict[str, object]:
     config = load_config(config_path)
+    book_confirmations = {
+        spec["id"]: spec
+        for group in ("systems", "indicators", "risk")
+        for spec in config[group]
+        if spec.get("book_confirmed") == "第2版"
+    }
     code = symbol.replace(".", "_")
     daily_qfq = _read_indexed_csv(cache_dir / f"{code}_daily_qfq.csv")
     daily_raw = _read_indexed_csv(cache_dir / f"{code}_daily_raw.csv")
@@ -56,6 +62,7 @@ def build_dashboard(
         params=config["params"],
         market=config["market"],
         symbol=symbol,
+        book_confirmations=book_confirmations,
     )
     payload["summary"]["name"] = name
     document = render_html(payload)
@@ -293,6 +300,7 @@ function renderSignal(signal){
     ["单笔风险预算",position.risk_budget===null?"—":money(position.risk_budget)],
     ["估算股数",position.shares===null?"—":`${position.shares.toLocaleString("zh-CN")} 股`],
     ["来源引文",signal.source_quote],["置信度",signal.confidence],
+    ...(signal.book_confirmation?[["书内确认",signal.book_confirmation]]:[]),
     ["来源 URL",`<a href="${esc(signal.source_url)}" target="_blank" rel="noopener noreferrer">${esc(signal.source_url)}</a>`],
   ].map(([label,value])=>`<dt>${esc(label)}</dt><dd>${value===undefined?"—":(String(value).startsWith("<a ")?value:esc(value))}</dd>`).join("");
   warning.innerHTML=signal.possible_execution_warning

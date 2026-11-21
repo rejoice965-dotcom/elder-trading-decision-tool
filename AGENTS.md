@@ -9,7 +9,7 @@
 ## 当前模式：Mode B → P0-R 部分回填（用户只有纸质书，无电子版）
 
 - 唯一事实源：`INDICATOR_SPEC.md`（公开资料交叉核对规格 v1.0）→ P0 规范化为 `docs/INDICATORS.md` + `docs/indicators.yaml` → 代码只读 `docs/indicators.yaml`。
-- **本规格不是原书直引。** Mode B 阶段所有 `source_page` 为 `null`。
+- **公开资料重建不是原书直引。** 当前15条规格已按用户确认的第2版书页回填；其余6条 `source_page` 保持 `null`。
 - 溯源格式固定为：`source_url + source_quote(≤50字) + confidence(A/B/C)`。
 - **严禁编造**：书页码、章节号、"书中原文""原著写道"等表述、任何引文。全仓库不得出现伪造的书内定位。
 - 规格文档、代码注释、界面依据面板统一标注：「依据：公开资料交叉核对，非原书直引」。

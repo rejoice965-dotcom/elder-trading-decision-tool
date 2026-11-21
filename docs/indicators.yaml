@@ -1,5 +1,5 @@
 # 指标规格 v1.0 — 机器可读事实源（P0 产出）
-# 基于公开资料交叉核对重建，非原书直引。所有 source_page 必须为 null。
+# 基于公开资料交叉核对重建。已确认条目填第2版真实页码，其余 source_page 为 null；禁止编造。
 # 代码只允许从本文件的 params: 读取参数，禁止硬编码周期数字。
 
 meta:
@@ -7,7 +7,7 @@ meta:
   source_doc: "INDICATOR_SPEC.md"
   human_doc: "docs/INDICATORS.md"
   provenance: "公开资料交叉核对重建，非原书直引"
-  source_page_policy: "null for all entries; 禁止编造章节号/页码/书中原文"
+  source_page_policy: "已确认条目填写第2版真实页码，其余为 null；禁止编造章节号/页码/引文"
   generated_by: "WorkBuddy 代跑 P0（本机 Codex CLI 受执行环境沙箱限制，未能写文件）"
   counts: { total: 21, A: 15, B: 4, C: 2 }
 
@@ -18,7 +18,7 @@ params:
   macd_slow: 26                  # 备选 25
   macd_signal: 9                 # 备选 8
   fi_ema: 2                      # 备选 13（中线）/ 1（原始值）
-  rsi_period: 14                 # 备选 7（二手资料称 7，无原书可证）
+  rsi_period: 14                 # 第2版建议 7-9，另有 13 日示例；按决定保持 14
   stoch_k: 13                    # 备选 14
   stoch_d: 3                     # 备选 5
   oversold: 30
@@ -96,7 +96,12 @@ systems:
     confidence: A
     source_ids: [S1, S2]
     source_quote: "In his first book, 'Trading for a Living,' Elder defined his Triple Screen Trading System."
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第7章 交易系统 · 第39节 三重滤网交易系统"]
+    book_page: ["p.224"]
+    book_quote: ["它最基本的原理一直保持不变：使用多重时间周期和技术指标进行交易决策。"]
+    source_page: "p.224"
     status: implement
   - id: SYS-02
     name: "方向铁律"
@@ -106,7 +111,12 @@ systems:
     confidence: A
     source_ids: [S1]
     source_quote: "Screen one is strict filter: no exceptions."
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第7章 交易系统 · 第39节 第一重滤网总结", "第4章 计算机化的技术分析 · 第22节 移动平均 · 交易规则"]
+    book_page: ["p.229", "p.113"]
+    book_quote: ["在上升的趋势里只允许你选择买入或者观望；在下跌的趋势里只允许你卖出或观望。", "当EMA走平，只是小幅波动时，那意味着一种漫无目的、没有趋势的市场。这种情况下不要使用趋势跟随方法。"]
+    source_page: "p.229, p.113"
     status: implement
   - id: SYS-03
     name: "第1重 周线定方向"
@@ -116,7 +126,12 @@ systems:
     confidence: A
     source_ids: [S1, S2]
     source_quote: "Elder showed that a trader could use the slope of the two most recent bars on a MACD histogram to determine the trend."
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第7章 交易系统 · 第39节 第一重滤网——市场潮流"]
+    book_page: ["p.228"]
+    book_quote: ["MACD的斜率由最近两根MACD柱线之间的关系确定。"]
+    source_page: "p.228"
     status: implement
   - id: SYS-04
     name: "第2重 日线找逆势回调"
@@ -129,8 +144,14 @@ systems:
     confidence: A
     source_ids: [S1]
     source_quote: "oscillator divergences are used to buy short-term weakness in uptrends, or to sell short-term strength in downtrends"
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第7章 交易系统 · 第39节 第二重滤网——市场浪涛", "第4章 计算机化的技术分析 · 第26节 随机指标 · 「交易规则」"]
+    book_page: ["p.229", "p.230", "p.143"]
+    book_quote: ["将震荡指标应用于日线图之中。", "当周趋势是上升的，三重滤网仅允许采用日线图震荡指标发出的买入信号，而不会允许采用其发出的卖出信号。", "三重滤网交易系统只有当周趋势向上时，随机指标给出的买入信号才会被采用。"]
+    source_page: "p.229, p.230, p.143"
     status: implement
+    notes: "第2版 p.167「2日EMA可以很好地与三重滤网交易系统（见第39节）相适应。」p.229「将震荡指标应用于日线图之中。」按用户决定保留当前三选一 setup，Force Index 触发为 optional。"
   - id: SYS-05
     name: "第3重 盘中挂单择时"
     formula: "buy_stop=high_raw[T-1]+offset, sell_stop=low_raw[T-1]-offset, offset=breakout_offset_ticks*price_tick"
@@ -139,7 +160,12 @@ systems:
     confidence: A
     source_ids: [S1]
     source_quote: "a buy stop order to catch an upside breakout by buying at the previous day's high"
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第7章 交易系统 · 第39节 第三重滤网——买入技术"]
+    book_page: ["p.231", "p.236", "p.232"]
+    book_quote: ["做多时，在日线向上突破前一交易日高点的时候买入；卖空时，在日线向下突破前一交易日低点的时候卖出。", "三重滤网交易系统需要设置相对保守的止损价位。", "突破技术仍然是有效的，但是我很少使用它了。"]
+    source_page: "p.231, p.236, p.232"
     status: implement
 
 # ===== 指标 =====
@@ -154,7 +180,12 @@ indicators:
     confidence: A
     source_ids: [S1, S2]
     source_quote: "A rising EMA confirms a bull market; a falling EMA confirms a bear market."
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第4章 计算机化的技术分析 · 第22节 移动平均 · 「选择移动平均的长度」"]
+    book_page: ["p.111", "p.115", "p.110"]
+    book_quote: ["监控EMA的斜率是很有益的，因为上升的斜率意味着上涨趋势，而下降的斜率意味着下跌趋势。", "使用26周和13周的EMA来分析周线图，或者22日和11日的EMA来分析日线图。", "指数移动平均（以下简称EMA）是一种更好的趋势跟随指标"]
+    source_page: "p.111, p.115, p.110"
     status: implement
   - id: IND-02
     name: "MACD 线 + 柱状图"
@@ -166,7 +197,12 @@ indicators:
     confidence: A
     source_ids: [S1, S2]
     source_quote: "The slope of the histogram — not its absolute level — is the primary signal."
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第4章 计算机化的技术分析 · 第23节 MACD 线和 MACD 柱状线 · 背离"]
+    book_page: ["p.127", "p.129", "p.128"]
+    book_quote: ["当MACD柱状线从第二个底部开始反转时，它就发出了买入的信号。", "当MACD柱状线从第二个顶点开始下降时，就已经是卖出的信号了。", "26日和13日指数移动平均线，12-26-9MACD线和柱状图"]
+    source_page: "p.127, p.129, p.128"
     status: implement
   - id: IND-03
     name: "Force Index 强力指数"
@@ -178,7 +214,12 @@ indicators:
     confidence: A
     source_ids: [S1, S2]
     source_quote: "Force Index is calculated by subtracting yesterday's close from today's close and multiplying that by today's volume."
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第5章 成交量和时间 · 第30节 强力指数指标 · 「如何构造强力指数指标」"]
+    book_page: ["p.163", "p.167"]
+    book_quote: ["强力指数指标＝今日成交量×（今日收盘价－昨日收盘价）", "2日EMA可以很好地与三重滤网交易系统（见第39节）相适应。", "当13日EMA穿越到中心线上方时，表明多头占据优势，此时是买入时机"]
+    source_page: "p.163, p.167"
     status: implement
   - id: IND-04
     name: "Elder-Ray 埃尔德射线"
@@ -198,11 +239,16 @@ indicators:
     params_ref: [stoch_k, stoch_d, oversold, overbought]
     inputs: [high, low, close]
     layer: "oscillator/screen2"
-    rule: "LONG 时 K <= oversold，SHORT 时 K >= overbought。穿回阈值为 optional。"
+    rule: "LONG 时 K <= oversold，SHORT 时 K >= overbought。穿回阈值为 optional。第2版标准 %K 时间跨度为 5 天；按用户决定保持 stoch_k=13。"
     confidence: A
     source_ids: [S1]
     source_quote: "Elder suggests Force Index (2-day EMA), Elder-Ray (bull/bear power), or 13-day Stochastic."
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第4章 计算机化的技术分析 · 第26节 随机指标"]
+    book_page: ["p.139", "p.141"]
+    book_quote: ["随机指标的标准时间跨度是5天，虽然有些交易者会用更多的天数。", "随机指标的取值范围是0～100。通常在20%和80%的地方画参考线，标识出超买和超卖的区域。"]
+    source_page: "p.139, p.141"
     status: implement
   - id: IND-06
     name: "RSI 相对强弱"
@@ -214,9 +260,14 @@ indicators:
     confidence: A          # 公式 A；周期参数 B（二手称 7）
     source_ids: [S2, S5]
     source_quote: "Oscillators: Stochastic, rate of change, ... relative strength indicator, elder-ray, force index"
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第4章 计算机化的技术分析 · 第27节 相对强弱指标"]
+    book_page: ["p.144", "p.145", "p.146"]
+    book_quote: ["相对强弱指标（RSI）是由威尔斯·威尔德发明的一个震荡指标。", "交易信号在短期内的RSI上看得更清楚，比如7～9天的RSI。", "这些线通常是在30%和70%的地方。"]
+    source_page: "p.144, p.145, p.146"
     status: implement
-    note: "周期默认 14；二手资料称 7，无原书可证，界面可切"
+    note: "第2版差异：建议 RSI 7～9 日，另有 13 日示例；按用户决定保持 rsi_period=14，不改参数。"
   - id: IND-07
     name: "Williams %R"
     formula: "WR=-100*(HHV(high,n)-close)/(HHV(high,n)-LLV(low,n))"
@@ -240,7 +291,12 @@ indicators:
     confidence: B
     source_ids: [S5]
     source_quote: "Class A: when price reaches a new high/low, an oscillator reaches a lower high/higher bottom"
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第4章 计算机化的技术分析 · 第23节 MACD 线和 MACD 柱状线 · 背离"]
+    book_page: ["p.127", "p.129"]
+    book_quote: ["熊市背离显示出多方的能量在耗尽，价格还在惯性上涨，但空方已经准备入场接手。", "三重牛市或熊市背离由三组价格和震荡指标的底部或者三组价格和震荡指标的顶部组成。"]
+    source_page: "p.127, p.129"
     status: optional
   - id: IND-09
     name: "成交量 Volume"
@@ -252,7 +308,12 @@ indicators:
     confidence: A
     source_ids: [S1, S4]
     source_quote: "If the close is higher today than yesterday, the force is positive."
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第5章 成交量和时间 · 第30节 强力指数指标 · 「交易心理学」"]
+    book_page: ["p.164"]
+    book_quote: ["成交量反映了市场参与者的情绪卷入程度。"]
+    source_page: "p.164"
     status: implement
   - id: IND-10
     name: "OBV 能量潮"
@@ -277,7 +338,12 @@ indicators:
     confidence: C
     source_ids: [S5]
     source_quote: null
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第5章 成交量和时间 · 第29节 以成交量为基础的指标 · 「更多关于 A/D 值」"]
+    book_page: ["p.162"]
+    book_quote: ["在A/D和日本蜡烛图之间有很强的类似性，它们都关注开盘价和收盘价之间的差异。"]
+    source_page: "p.162"
     status: skip
   - id: IND-12
     name: "趋势线、支撑/阻力"
@@ -315,17 +381,27 @@ risk:
     confidence: A
     source_ids: [S2]
     source_quote: "Never risk more than 2% of total trading capital on a single trade."
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第9章 风险管理 · 第50节 2%法则"]
+    book_page: ["p.296", "p.298"]
+    book_quote: ["2%原则会防止你的账户在单次交易中出现本金亏损2%以上的风险。", "将A除以B，得到所能交易的最大股数。"]
+    source_page: "p.296, p.298"
     status: implement
   - id: RISK-02
     name: "6% 法则"
     formula: "if (month_open-equity) > monthly_drawdown_limit*month_open: halt(rest_of_month)"
     params_ref: [monthly_drawdown_limit]
-    rule: "月度回撤超限则当月停止交易"
+    rule: "月度回撤超限则当月停止交易。第2版还将当月损失与持仓头寸风险额度之和计入 6% 限额；按用户决定维持现状。"
     confidence: A
     source_ids: [S2]
     source_quote: "If the account falls 6% below its monthly opening balance, stop trading for the rest of that month."
-    source_page: null
+    book_confirmed: "第2版"
+    book_edition: "《以交易为生》（原书第2版），[美]亚历山大·埃尔德（Alexander Elder）著，熊振华译，机械工业出版社 2017.6 第1版（2020.6 第8次印刷），ISBN 978-7-111-56972-5"
+    book_chapter: ["第9章 风险管理 · 第51节 6%法则"]
+    book_page: ["p.302", "p.304"]
+    book_quote: ["6%原则能给每一个账户都设了一个当月最大回撤比例。", "如果两者之和已经超过你月初账户资产的6%时，这个月剩下的时间你都不能再增加交易头寸了"]
+    source_page: "p.302, p.304"
     status: implement
   - id: RISK-03
     name: "50% 法则"
@@ -346,15 +422,14 @@ optional_rules:
 
 # ===== 不实现 =====
 excluded:
-  - {name: "Impulse System", reason: "S1 明确属《Come into my Trading Room》(2002)，非本书"}
+  - {name: "Impulse System", reason: "第2版正文 p.236-242 存在；按用户决定本期仍不实现，列为二期 optional 候选。"}
   - {name: "SafeZone / Chandelier / Market Thermometer / AutoEnvelope", reason: "S3 显示出自覆盖两本书的 MetaStock 插件；S4 混入本书清单"}
   - {name: "ATR(13) 止损基准 / Envelope(20,±2.5%) / 布林带 / Keltner 作为第3重主力", reason: "与 S1 复述的原版第3重冲突，无原书可判定"}
+  - {name: "41节通道交易系统", reason: "第2版正文 p.242 起存在；按用户决定本期仍不实现，列为二期 optional 候选。"}
   - {name: "通道触轨 + K线反转形态作为第3重", reason: "S4 版本，采用 SYS-05 替代"}
   - {name: "任何 ML / LLM 预测", reason: "与本书方法论无关"}
 
 # ===== 待用户决策 =====
 open_questions:
-  - "RSI 周期取 14 还是 7（无原书可证）"
-  - "optional 指标 IND-07/08/10/12 及附加规则默认跳过"
-  - "目标市场、数据源与回测区间"
-  - "将来拿到书 -> 跑 prompts/P0-R.txt 回填页码与原文"
+  - "待补第2版书页：IND-04、IND-07、IND-10、IND-12、IND-13、RISK-03；确认前保持 source_page=null"
+  - "D4 用户决定保留 RSI 周期14；D6保留 Stochastic K 周期13；D8保留现有月度熔断实现"
