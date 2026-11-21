@@ -57,9 +57,12 @@ def _screen_two(daily: pd.DataFrame, params: dict[str, Any]) -> pd.DataFrame:
         | values["rsi"].ge(overbought)
     )
     result = daily[["high", "low", "close"]].copy()
-    result["previous_high"] = daily["high_raw"] if "high_raw" in daily else daily["high"]
-    result["previous_low"] = daily["low_raw"] if "low_raw" in daily else daily["low"]
-    result["previous_close_raw"] = daily["close_raw"] if "close_raw" in daily else daily["close"]
+    raw_high = daily["high_raw"] if "high_raw" in daily else daily["high"]
+    raw_low = daily["low_raw"] if "low_raw" in daily else daily["low"]
+    raw_close = daily["close_raw"] if "close_raw" in daily else daily["close"]
+    result["previous_high"] = raw_high.shift(1)
+    result["previous_low"] = raw_low.shift(1)
+    result["previous_close_raw"] = raw_close.shift(1)
     if "is_st" in daily:
         result["is_st"] = daily["is_st"].fillna(False).astype(bool)
     result["long_setup"] = long_setup

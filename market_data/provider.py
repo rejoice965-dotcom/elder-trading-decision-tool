@@ -60,8 +60,8 @@ def fetch_history(
     else:
         raise ValueError(f"Unsupported live provider: {provider}")
 
-    daily_qfq = _annotate_daily_closed(daily_qfq, market)
-    daily_raw = _annotate_daily_closed(daily_raw, market)
+    daily_qfq = _annotate_daily_closed(_at_daily_close(daily_qfq, market), market)
+    daily_raw = _annotate_daily_closed(_at_daily_close(daily_raw, market), market)
     intraday_raw = annotate_intraday_status(intraday_raw, market)
     intraday_qfq = apply_adjustment_factor(intraday_raw, daily_raw, daily_qfq)
     fetched_at = datetime.now().astimezone().isoformat(timespec="seconds")
@@ -92,9 +92,10 @@ def _date_text(value: pd.Timestamp) -> str | None:
 def load_cached(symbol: str, cache_dir: Path) -> MarketDataBundle:
     code = symbol.replace(".", "_")
     metadata = json.loads((cache_dir / f"{code}_metadata.json").read_text(encoding="utf-8"))
+    market = load_config()["market"]
     return MarketDataBundle(
-        _read_frame(cache_dir / f"{code}_daily_qfq.csv"),
-        _read_frame(cache_dir / f"{code}_daily_raw.csv"),
+        _at_daily_close(_read_frame(cache_dir / f"{code}_daily_qfq.csv"), market),
+        _at_daily_close(_read_frame(cache_dir / f"{code}_daily_raw.csv"), market),
         _read_frame(cache_dir / f"{code}_60m_qfq.csv"),
         _read_frame(cache_dir / f"{code}_60m_raw.csv"),
         metadata,
@@ -197,6 +198,14 @@ def _annotate_daily_closed(frame: pd.DataFrame, market: dict[str, Any]) -> pd.Da
         stamp.date() < now.date() or (stamp.date() == now.date() and now.time() >= close_time)
         for stamp in result.index
     ]
+    return result
+
+
+def _at_daily_close(frame: pd.DataFrame, market: dict[str, Any]) -> pd.DataFrame:
+    result = frame.copy()
+    close_time = market["trading_sessions"]["afternoon_close"]
+    result.index = pd.DatetimeIndex(result.index).normalize() + pd.to_timedelta(f"{close_time}:00")
+    result.index.name = "timestamp"
     return result
 
 

@@ -120,6 +120,39 @@ def test_future_data_perturbation_does_not_change_past_signals() -> None:
     pd.testing.assert_frame_equal(baseline.reset_index(drop=True), past.reset_index(drop=True))
 
 
+def test_incomplete_same_day_daily_bar_cannot_leak_into_intraday_signal() -> None:
+    weekly, daily, intraday = sample_frames()
+    baseline = build_triple_screen_signals(
+        weekly,
+        daily,
+        intraday,
+        symbol="600519.SH",
+        params=CONFIG["params"],
+        market=CONFIG["market"],
+    )
+    same_day_close = intraday.index[0].normalize() + pd.Timedelta("15h")
+    same_day = pd.DataFrame(
+        {
+            "open": [1e6],
+            "high": [1e6],
+            "low": [1e6],
+            "close": [1e6],
+            "volume": [1e9],
+            "is_closed": [True],
+        },
+        index=[same_day_close],
+    )
+    with_future_close = build_triple_screen_signals(
+        weekly,
+        pd.concat([daily, same_day]),
+        intraday,
+        symbol="600519.SH",
+        params=CONFIG["params"],
+        market=CONFIG["market"],
+    )
+    pd.testing.assert_frame_equal(baseline.reset_index(drop=True), with_future_close.reset_index(drop=True))
+
+
 def test_risk_rules_and_lot_rounding() -> None:
     assert position_size(100000, 10, 9, CONFIG["params"], CONFIG["market"]) == 2000
     assert position_size(10000, 100, 99.99, CONFIG["params"], CONFIG["market"]) == 100

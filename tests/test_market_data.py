@@ -10,6 +10,7 @@ from market_data.bars import (
     apply_adjustment_factor,
     normalize_bars,
 )
+from market_data.provider import _at_daily_close
 
 
 MARKET = load_config()["market"]
@@ -81,6 +82,15 @@ def test_normalize_provider_chinese_columns() -> None:
     result = normalize_bars(frame)
     assert list(result.columns) == ["open", "high", "low", "close", "volume"]
     assert result.index[0] == pd.Timestamp("2026-01-05")
+
+
+def test_daily_provider_timestamps_are_at_configured_close() -> None:
+    frame = pd.DataFrame(
+        {"open": [10], "high": [11], "low": [9], "close": [10], "volume": [100]},
+        index=pd.DatetimeIndex(["2026-01-05"]),
+    )
+    result = _at_daily_close(frame, MARKET)
+    assert result.index[0] == pd.Timestamp("2026-01-05 15:00")
 
 
 def test_resume_first_bar_is_unavailable_until_its_close() -> None:
