@@ -264,17 +264,33 @@ VN.py 只作上级目录依赖，禁止把框架源码复制进产品仓库。
 最后 5 行总结：实现了什么、验证了什么、还差什么、下一步建议、需要我决策的问题。
 ```
 
-### P0-R — 可选：将来拿到书后回填（现在不用跑）
+### P0-R — 纸质书回填（Mode B-P，当前阶段）
+
+> **状态（2026-11-21 17:42）**：用户只有纸质书，已拍来 67 张书页照片，
+> 已逐行确认 `docs/book_references.csv` 的 32 行引文草稿与版本字符串；
+> 差异表 D1~D8 已「按建议」拍板，见 `docs/BOOK_BACKFILL_DECISIONS.md`。
+> 完整可执行提示词见 **`prompts/P0-R.txt`**（直接发给 Codex，不要再给计划、不要再问）。
+> 本轮为**部分回填**：15 条有书内依据，6 条仍为 null；全局「非原书直引」提示保留。
 
 ```
-读取用户提供的《以交易为生》电子版，逐条给 docs/INDICATORS.md 补 章节/页码/原文短引(<=50字)，把 confidence 升级为 book-confirmed，source_page 从 null 改为真实页码。发现与现有规格冲突的，列成差异表让我决策，不要静默覆盖。同步更新 docs/indicators.yaml 与界面上的来源标注（去掉"非原书直引"提示）。
+用纸质《以交易为生》（原书第2版，机工社 2017.6 第1版 / 2020.6 第8次印刷，
+ISBN 978-7-111-56972-5）回填书内定位。事实源只能是 docs/book_references.csv
+中用户已确认的行与 docs/book_photos/ 照片，逐字抄用，禁止推断或编造页码。
+已确认条目新增 book_confirmed/book_edition/book_chapter/book_page/book_quote
+字段并把 source_page 改为真实页码；保留原 confidence: A（信号里硬编码为 A，
+覆写会挂 28 项测试）。不改指标/信号/风控代码、不重新生成 signals.csv、
+不改 params:/market: 数值。D1~D8 差异已由用户拍板，不要重新列差异表。
+同步 docs/INDICATORS.md、docs/indicators.yaml、INDICATOR_SPEC.md、
+docs/TRACEABILITY.md 及全局「source_page 一律为 null」的旧措辞；
+界面仅对已确认条目追加「书内确认：《以交易为生》（原书第2版）第 X 章 第 Y 页」。
+完成后给：回填行数 / 待补行数 / diff / pytest 28 passed / git commit。
 ```
 
 ---
 
 ## 4. 验收总清单
 
-- [ ] `docs/INDICATORS.md` 每条都有 `source_url + source_quote + confidence`，且 `source_page` 全为 null
+- [ ] `docs/INDICATORS.md` 每条都有 `source_url + source_quote + confidence`；Mode B 阶段 `source_page` 全为 null，P0-R 部分回填后仅已确认条目填真实页码、其余仍为 null
 - [ ] 全仓库 grep 不到编造的"书中原文/第 X 章/第 X 页"表述
 - [ ] `docs/indicators.yaml` 的 params 集中可配，代码里没有硬编码周期数字
 - [ ] `PROJECT_SELECTION.md` 有真实 API 返回，选型满足 A~E
