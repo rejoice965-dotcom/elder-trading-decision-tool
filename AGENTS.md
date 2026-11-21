@@ -6,7 +6,15 @@
 
 做一个交易软件：加载 OHLCV 行情 → 按《以交易为生》(Alexander Elder, *Trading for a Living*) 的指标体系计算 → 在 K 线上标出买卖点 → 每个信号可追溯依据。
 
-## 当前模式：Mode B → P0-R 部分回填（用户只有纸质书，无电子版）
+## 当前模式：P5 查询版看板（2026-11-21 启动，产品定位已升级）
+
+- **用户已明确**：产品定位从「单票回测展示页」升级为「**输入任意沪深股票代码即可查询该股**的查询/分析工具」——不是实盘交易软件；Elder 思路保留；现有画面风格保留（用户认可）。
+- 执行提示词：`prompts/P5.txt`（用户反馈清单 F1~F7、已验证行情源事实、硬约束、交付清单都在其中）。
+- P5 允许改 `presentation/` 与新增前端文件；**不允许改** `elder_indicators/` / `market_data/` / `strategy_adapters/` / `tests/` 任何代码，不重新生成 `signals.csv`，不改 `params:`/`market:` 数值；`pytest -q` 必须仍 28 passed。
+- 已实测数据源结论（写入 P5，勿重新调研）：腾讯 fqkline 接口浏览器可直连（`access-control-allow-origin: *`，日线 qfqday / 周线 qfqweek，实际返回根数可能少于请求值）；股票名称 `qt.gtimg.cn` 为 GBK 编码需 `TextDecoder('gbk')`；东财接口连续请求限流不可作唯一源；60 分钟线 mkline 返回 301，验证不通则第 3 重降级为日线 T-1 突破并在页面注明。
+- 原 `examples/triple-screen.html`（茅台回测样例）保留不删；查询版为新文件。
+
+## 历史模式：Mode B → P0-R 部分回填（已完成，规则继续有效）
 
 - 唯一事实源：`INDICATOR_SPEC.md`（公开资料交叉核对规格 v1.0）→ P0 规范化为 `docs/INDICATORS.md` + `docs/indicators.yaml` → 代码只读 `docs/indicators.yaml`。
 - **公开资料重建不是原书直引。** 当前19条规格已按用户确认的第2版书页回填；其余2条（IND-04、IND-07）`source_page` 保持 `null`。
@@ -58,7 +66,7 @@
 
 ## 阶段顺序
 
-`prompts/P0.txt`（规格）与 `prompts/P1.txt`（选型）可并行；`P2`（实现）前两者必须都完成；之后 `P3`（界面）→ `P4`（验收）→ `P4-R`（修正轮）。**P0~P4 与 P0-R 最终轮已完成**：累计回填 19 条规格 / 44 行引文；仅 IND-04、IND-07 因第2版正文无独立小节永久保持 null。D1~D11 均已拍板（D9 趋势线降级、D10 维持 skip、D11 浮盈保护比例保持 0.50），见 `docs/BOOK_BACKFILL_DECISIONS.md`。
+`prompts/P0.txt`（规格）与 `prompts/P1.txt`（选型）可并行；`P2`（实现）前两者必须都完成；之后 `P3`（界面）→ `P4`（验收）→ `P4-R`（修正轮）。**P0~P4 与 P0-R 最终轮已完成**：累计回填 19 条规格 / 44 行引文；仅 IND-04、IND-07 因第2版正文无独立小节永久保持 null。D1~D11 均已拍板（D9 趋势线降级、D10 维持 skip、D11 浮盈保护比例保持 0.50），见 `docs/BOOK_BACKFILL_DECISIONS.md`。**当前阶段是 `P5.txt` 查询版看板改版**（任意代码查询 + 主图 MA/EMA/BOLL 下拉 + 中文日期轴 + 指标图例），完成后再回 P0-R 口径的验收清单。
 
 ## 目标市场：A 股（沪深，2026-11-20 23:00 用户确认）
 
