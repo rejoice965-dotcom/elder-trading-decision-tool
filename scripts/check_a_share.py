@@ -64,6 +64,12 @@ def main() -> None:
     assert daily_dates.issubset(expected_dates)
     signal_dates = set(signals["timestamp"].dt.date)
     assert signals["timestamp"].isin(raw_intraday.index).all()
+    signal_days = signals["timestamp"].dt.normalize()
+    previous_raw = raw_daily.set_axis(raw_daily.index.normalize()).shift(1)
+    values = pd.DataFrame(signals["indicator_values"].map(ast.literal_eval).tolist())
+    for field in ("high", "low", "close"):
+        signal_field = "previous_close_raw" if field == "close" else f"previous_day_{field}_raw"
+        np.testing.assert_array_equal(values[signal_field], previous_raw.loc[signal_days, field])
     intraday_dates = set(raw_intraday.index.date)
     assert signal_dates.issubset(intraday_dates)
     assert not signal_dates.intersection(missing_sessions)
@@ -100,9 +106,7 @@ def main() -> None:
     _, factors, limits, _ = build_daily_view(qfq_daily, raw_daily, MARKET, SYMBOL)
     markers = build_markers(signals, factors, limits, market=MARKET)
     possible_not_filled = sum(marker["possible_execution_warning"] for marker in markers)
-    at_limit_entries = sum(
-        bool(ast.literal_eval(value).get("at_price_limit")) for value in signals["indicator_values"]
-    )
+    at_limit_entries = int(values["at_price_limit"].sum())
 
     first_signal_day = signals["timestamp"].min().date()
     t_plus_one_same_day_sell_allowed = can_sell(first_signal_day, first_signal_day, MARKET)
@@ -131,6 +135,7 @@ def main() -> None:
             "cached_daily_sessions": len(daily_dates),
             "missing_sessions_in_daily_cache": len(missing_sessions),
             "signals": len(signals),
+            "signals_with_exact_t_minus_one_raw_references": len(values),
             "signal_dates_without_intraday": len(signal_dates - intraday_dates),
             "signals_on_missing_sessions": len(signal_dates & missing_sessions),
         },

@@ -60,9 +60,9 @@ def _screen_two(daily: pd.DataFrame, params: dict[str, Any]) -> pd.DataFrame:
     raw_high = daily["high_raw"] if "high_raw" in daily else daily["high"]
     raw_low = daily["low_raw"] if "low_raw" in daily else daily["low"]
     raw_close = daily["close_raw"] if "close_raw" in daily else daily["close"]
-    result["previous_high"] = raw_high.shift(1)
-    result["previous_low"] = raw_low.shift(1)
-    result["previous_close_raw"] = raw_close.shift(1)
+    result["previous_high"] = raw_high
+    result["previous_low"] = raw_low
+    result["previous_close_raw"] = raw_close
     if "is_st" in daily:
         result["is_st"] = daily["is_st"].fillna(False).astype(bool)
     result["long_setup"] = long_setup
@@ -111,15 +111,17 @@ def build_triple_screen_signals(
     raw_high = "high_raw" if "high_raw" in low else "high"
     raw_low = "low_raw" if "low_raw" in low else "low"
     raw_close = "close_raw" if "close_raw" in low else "close"
-    low["session_date"] = pd.to_datetime(low["timestamp"]).dt.date
+    low["session_date"] = low["timestamp"].dt.normalize()
     if market["resume_signal_policy"]["first_60m_bar_must_be_closed"]:
         if "is_closed" in low:
             low = low.loc[low["is_closed"].fillna(False)].copy()
 
+    # The latest eligible daily row already represents T-1 for the intraday session.
+    daily_screens["session_date"] = daily_screens["timestamp"].dt.normalize()
     aligned = pd.merge_asof(
         low,
-        daily_screens.sort_values("timestamp"),
-        on="timestamp",
+        daily_screens.drop(columns="timestamp"),
+        on="session_date",
         direction="backward",
         allow_exact_matches=False,
         suffixes=("_low", "_mid"),

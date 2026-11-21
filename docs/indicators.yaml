@@ -120,9 +120,12 @@ systems:
     status: implement
   - id: SYS-04
     name: "第2重 日线找逆势回调"
-    formula: "LONG -> oversold_or_bullish_divergence(mid); SHORT -> overbought_or_bearish_divergence(mid)"
-    inputs: [close, high, low, volume]
-    rule: "升势买超卖，跌势卖超买；只看顺势方向的 setup"
+    formula: >-
+      LONG: (bear_power < 0 and bear_power > previous_bear_power) or K <= oversold or RSI <= oversold.
+      SHORT: (bull_power > 0 and bull_power < previous_bull_power) or K >= overbought or RSI >= overbought.
+    params_ref: [ema_period, rsi_period, stoch_k, oversold, overbought]
+    inputs: [close, high, low]
+    rule: "使用 T-1 已收盘前复权日线。同方向三者任一成立即 setup，FLAT 无 setup。简化条件基于 S1 任选振荡器的思路。"
     confidence: A
     source_ids: [S1]
     source_quote: "oscillator divergences are used to buy short-term weakness in uptrends, or to sell short-term strength in downtrends"
@@ -130,9 +133,9 @@ systems:
     status: implement
   - id: SYS-05
     name: "第3重 盘中挂单择时"
-    formula: "buy_stop=high.shift(1)+offset; sell_stop=low.shift(1)-offset"
-    inputs: [high, low, close]
-    rule: "昨日高点上方挂 buy stop / 昨日低点下方挂 sell stop，突破才成交"
+    formula: "buy_stop=high_raw[T-1]+offset, sell_stop=low_raw[T-1]-offset, offset=breakout_offset_ticks*price_tick"
+    inputs: [high_raw, low_raw, close_raw]
+    rule: "T-1 是信号日前一交易日。原始参照字段直接记录 T-1 的 raw 价格。已收盘 60 分钟 K 达到阈值时产生候选信号。BUY 保护止损参考 T-1 raw 低点，SELL 参考 T-1 raw 高点。"
     confidence: A
     source_ids: [S1]
     source_quote: "a buy stop order to catch an upside breakout by buying at the previous day's high"
@@ -171,7 +174,7 @@ indicators:
     params_ref: [fi_ema]
     inputs: [close, volume]
     layer: "oscillator/screen2"
-    rule: "out<0 且价格底背离 -> 买；out>0 且顶背离 -> 卖"
+    rule: "计算后随信号输出，Force Index 背离为 optional"
     confidence: A
     source_ids: [S1, S2]
     source_quote: "Force Index is calculated by subtracting yesterday's close from today's close and multiplying that by today's volume."
@@ -183,7 +186,7 @@ indicators:
     params_ref: [ema_period]
     inputs: [high, low, close]
     layer: "oscillator/screen2"
-    rule: "买: close>ema13 & bear<0 & bear>bear.shift(1) & bull 创新高；卖镜像；止损前一日低点"
+    rule: "LONG 时 Bear Power 为负且回升。SHORT 时 Bull Power 为正且回落。"
     confidence: A
     source_ids: [S1, S2]
     source_quote: "Elder Ray consists of two measures - Bull Power and Bear Power."
@@ -195,7 +198,7 @@ indicators:
     params_ref: [stoch_k, stoch_d, oversold, overbought]
     inputs: [high, low, close]
     layer: "oscillator/screen2"
-    rule: "升势 K 跌破 30 后上穿 30 -> 买；跌势镜像。噪音多，优先级低于 IND-03"
+    rule: "LONG 时 K <= oversold，SHORT 时 K >= overbought。穿回阈值为 optional。"
     confidence: A
     source_ids: [S1]
     source_quote: "Elder suggests Force Index (2-day EMA), Elder-Ray (bull/bear power), or 13-day Stochastic."
@@ -207,7 +210,7 @@ indicators:
     params_ref: [rsi_period]
     inputs: [close]
     layer: "oscillator/screen2"
-    rule: "看背离与超买超卖；禁止单独逆势抄底摸顶"
+    rule: "LONG 时 RSI <= oversold，SHORT 时 RSI >= overbought。"
     confidence: A          # 公式 A；周期参数 B（二手称 7）
     source_ids: [S2, S5]
     source_quote: "Oscillators: Stochastic, rate of change, ... relative strength indicator, elder-ray, force index"
@@ -245,7 +248,7 @@ indicators:
     params_ref: []
     inputs: [volume]
     layer: "volume/verify"
-    rule: "放量上涨/缩量回调为健康；价格新高而量萎缩为乏力"
+    rule: "原始成交量透传，量价确认为 optional"
     confidence: A
     source_ids: [S1, S4]
     source_quote: "If the close is higher today than yesterday, the force is positive."
@@ -335,6 +338,12 @@ risk:
     source_page: null
     status: implement
 
+# ===== 可选未实现规则（指标数值仍保留） =====
+optional_rules:
+  - {indicator_id: IND-03, name: "Force Index 背离", status: optional}
+  - {indicator_id: IND-05, name: "Stochastic 穿回阈值", status: optional}
+  - {indicator_id: IND-09, name: "量价确认", status: optional}
+
 # ===== 不实现 =====
 excluded:
   - {name: "Impulse System", reason: "S1 明确属《Come into my Trading Room》(2002)，非本书"}
@@ -346,6 +355,6 @@ excluded:
 # ===== 待用户决策 =====
 open_questions:
   - "RSI 周期取 14 还是 7（无原书可证）"
-  - "optional 四项 IND-07/08/10/12 是否实现"
+  - "optional 指标 IND-07/08/10/12 及附加规则默认跳过"
   - "目标市场、数据源与回测区间"
   - "将来拿到书 -> 跑 prompts/P0-R.txt 回填页码与原文"

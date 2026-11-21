@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 from elder_indicators.config import load_config
 from elder_indicators.risk import monthly_halt, position_size, protected_stop
@@ -151,6 +152,41 @@ def test_incomplete_same_day_daily_bar_cannot_leak_into_intraday_signal() -> Non
         market=CONFIG["market"],
     )
     pd.testing.assert_frame_equal(baseline.reset_index(drop=True), with_future_close.reset_index(drop=True))
+
+
+@pytest.mark.parametrize("daily_close_hour", [0, 15], ids=["date-labeled", "close-labeled"])
+def test_stop_references_use_raw_previous_session_at_the_daily_close(daily_close_hour: int) -> None:
+    weekly, daily, intraday = sample_frames()
+    intraday.index = intraday.index.normalize() + pd.Timedelta("15h")
+    signal_day = daily.iloc[[-1]].set_axis(intraday.index).assign(
+        high_raw=90.0, low_raw=40.0, close_raw=80.0,
+    )
+    signal_day.index = signal_day.index.normalize() + pd.Timedelta(hours=daily_close_hour)
+    daily = daily.assign(
+        high_raw=daily["high"] + 1, low_raw=daily["low"] - 1, close_raw=daily["close"] + 1,
+    )
+    previous = daily.iloc[-1]
+    earlier = daily.iloc[-2]
+    assert previous["high_raw"] != earlier["high_raw"]
+    assert previous["low_raw"] != earlier["low_raw"]
+
+    signals = build_triple_screen_signals(
+        weekly,
+        pd.concat([daily, signal_day]),
+        intraday,
+        symbol="600519.SH",
+        params=CONFIG["params"],
+        market=CONFIG["market"],
+    )
+
+    assert signals["side"].tolist() == ["BUY"]
+    values = signals.iloc[0]["indicator_values"]
+    assert values["previous_day_high_raw"] == previous["high_raw"]
+    assert values["previous_day_low_raw"] == previous["low_raw"]
+    assert values["previous_close_raw"] == previous["close_raw"]
+    tick_offset = CONFIG["params"]["breakout_offset_ticks"] * CONFIG["market"]["price_tick"]
+    assert values["buy_stop_price_raw"] == pytest.approx(previous["high_raw"] + tick_offset)
+    assert values["sell_stop_price_raw"] == pytest.approx(previous["low_raw"] - tick_offset)
 
 
 def test_suspended_intraday_bar_cannot_emit_signal() -> None:

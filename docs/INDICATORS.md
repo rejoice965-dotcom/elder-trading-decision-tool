@@ -46,19 +46,19 @@
 - confidence: A | source: S1, S2 | quote: "Elder showed that a trader could use the slope of the two most recent bars on a MACD histogram to determine the trend." | source_page: null | status: implement
 
 ### SYS-04 第 2 重（日线找逆势回调）
-- 公式：`setup = oscillator_oversold_or_bullish_divergence(mid)` when `direction==LONG`；`setup = oscillator_overbought_or_bearish_divergence(mid)` when `direction==SHORT`
-- 参数：`fi_ema=2, rsi_period=14, stoch_k=13, stoch_d=3, oversold=30, overbought=70`
-- 输入：`close, high, low, volume`（日线）
-- 层级：第 2 重 / 振荡
-- 规则：升势买超卖（buy weakness），跌势卖超买（sell strength）；逆势信号一律忽略
+- 公式：使用信号日前最近已收盘交易日的 qfq 日线。周线方向为 LONG 时，`(Bear Power < 0 且较前一根日线上升) 或 K <= oversold 或 RSI <= oversold`。方向为 SHORT 时，`(Bull Power > 0 且较前一根日线下降) 或 K >= overbought 或 RSI >= overbought`。
+- 参数：`ema_period`、`rsi_period`、`stoch_k`、`oversold`、`overbought`。
+- 输入：`close, high, low`（前复权日线）。
+- 层级：第 2 重 / 振荡。
+- 规则：同方向三者任一成立即 setup。方向为 FLAT 时无 setup。项目采用 S1 允许任选振荡器的思路，使用已确认的简化条件。
 - confidence: A | source: S1 | quote: "oscillator divergences are used to buy short-term weakness in uptrends, or to sell short-term strength in downtrends" | source_page: null | status: implement
 
 ### SYS-05 第 3 重（盘中挂单择时）
-- 公式：`buy_stop = high.shift(1) + tick`；`sell_stop = low.shift(1) - tick`
-- 参数：`breakout_offset=1 tick`
+- 公式：`buy_stop = high_raw[T-1] + offset`，`sell_stop = low_raw[T-1] - offset`，其中 `offset = breakout_offset_ticks × price_tick`。T-1 是信号日前一交易日，原始高低点字段直接记录该日 raw 价格。
+- 参数：`breakout_offset_ticks`、`market.price_tick`
 - 输入：`high, low, close`（小时线）
 - 层级：第 3 重
-- 规则：周线多头 + 日线回调到位 → 昨日最高价上方挂 buy stop；周线空头 → 昨日最低价下方挂 sell stop。突破才成交
+- 规则：周线多头 + 日线回调到位 → 前一交易日 raw 最高价上方设置 buy stop。周线空头 + 日线反弹到位 → 前一交易日 raw 最低价下方设置 sell stop。已收盘 60 分钟 K 达到阈值时产生候选信号。BUY 的保护止损参考 T-1 raw 低点，SELL 参考 T-1 raw 高点
 - confidence: A | source: S1 | quote: "a buy stop order to catch an upside breakout by buying at the previous day's high" | source_page: null | status: implement
 
 > 差异记录：S4（中文二手）主张第 3 重是「包络线触轨 + K 线反转形态」，与 S1 冲突。采用 S1 版本，S4 版本列入不实现清单。
@@ -71,13 +71,13 @@
 |---|---|---|---|---|---|---|---|---|
 | IND-01 | EMA 指数移动平均 | `EMA(close, n)` | 13 / 26 | close | 斜率>0 多头，<0 空头，≈0 观望 | A | S1,S2 "Elder's preferred trend-following tool" | implement |
 | IND-02 | MACD 线 + 柱状图 | `macd=EMA(f)-EMA(s)`; `signal=EMA(macd,g)`; `hist=macd-signal` | 12,26,9 / 11,25,8 | close | `hist` 斜率转折或柱与价格背离 → 力量转折 | A | S2 "The slope of the histogram — not its absolute level — is the primary signal." | implement |
-| IND-03 | Force Index 强力指数 | `fi=(close-close.shift(1))*volume`; `out=EMA(fi, m)` | m=2 / 13, 1(原始) | close, volume | `out<0` 且价格底背离 → 买；`out>0` 且顶背离 → 卖 | A | S1 "Force Index is calculated by subtracting yesterday's close from today's close and multiplying that by today's volume." | implement |
-| IND-04 | Elder-Ray | `bull=high-EMA(close,13)`; `bear=low-EMA(close,13)` | ema=13 | high, low, close | 买：`close>ema13 & bear<0 & bear> bear.shift(1)`（最好底背离）且 `bull` 创新高；卖镜像 | A | S1 "Elder Ray consists of two measures - Bull Power and Bear Power." | implement |
-| IND-05 | Stochastic K/D | `K=100*(close-LLV(n))/(HHV(n)-LLV(n))`; `D=SMA(K,d)` | k=13 / 14, d=3, 阈值 30/70 | high, low, close | 升势：K 跌破 30 后上穿 30 → 买；跌势镜像 | A | S1 "Elder suggests Force Index (2-day EMA), Elder-Ray (bull/bear power), or 13-day Stochastic." | implement |
-| IND-06 | RSI 相对强弱 | Wilder RSI(`close`, n) | 14 / **7（二手资料称 7，无原书可证）** | close | 背离 + 超买超卖；禁止单独逆势抄底摸顶 | A（公式）/ B（周期） | S2, S5 | implement |
+| IND-03 | Force Index 强力指数 | `fi=(close-close.shift(1))*volume`; `out=EMA(fi, m)` | m=2 / 13, 1(原始) | close, volume | 计算后随信号输出，Force Index 背离为 optional | A | S1 "Force Index is calculated by subtracting yesterday's close from today's close and multiplying that by today's volume." | implement |
+| IND-04 | Elder-Ray | `bull=high-EMA(close,13)`; `bear=low-EMA(close,13)` | ema=13 | high, low, close | LONG：Bear Power 为负且回升。SHORT：Bull Power 为正且回落 | A | S1 "Elder Ray consists of two measures - Bull Power and Bear Power." | implement |
+| IND-05 | Stochastic K/D | `K=100*(close-LLV(n))/(HHV(n)-LLV(n))`; `D=SMA(K,d)` | k=13 / 14, d=3, 阈值 30/70 | high, low, close | LONG：K ≤ oversold。SHORT：K ≥ overbought。穿回阈值为 optional | A | S1 "Elder suggests Force Index (2-day EMA), Elder-Ray (bull/bear power), or 13-day Stochastic." | implement |
+| IND-06 | RSI 相对强弱 | Wilder RSI(`close`, n) | 14 / **7（二手资料称 7，无原书可证）** | close | LONG：RSI ≤ oversold。SHORT：RSI ≥ overbought | A（公式）/ B（周期） | S2, S5 | implement |
 | IND-07 | Williams %R | `WR=-100*(HHV(n)-close)/(HHV(n)-LLV(n))` | 待核对 | high, low, close | 超买超卖 + 背离 | B | S5；无可核验短引 → `unverified` | optional |
 | IND-08 | 背离分类 A/B/C | A：价格创新高/低而指标未创新高/低；B：双顶/底+指标走弱；C：指标持平 | 无 | price + 任一振荡指标 | A 类最强反转信号 | B | S5 "Class A: when price reaches a new high/low, an oscillator reaches a lower high/higher bottom" | optional |
-| IND-09 | 成交量 Volume | 原始 `volume` 柱 | 无 | volume | 放量上涨/缩量回调为健康；价格新高而量萎缩为乏力 | A | S1, S4 | implement |
+| IND-09 | 成交量 Volume | 原始 `volume` 柱 | 无 | volume | 原始成交量透传，量价确认为 optional | A | S1, S4 | implement |
 | IND-10 | OBV 能量潮 | `OBV_t = OBV_{t-1} ± volume_t` | 无 | close, volume | 价格新高 OBV 未新高 → 动能减弱 | B | S4, S5；`unverified` | optional |
 | IND-11 | A/D、Herrick Payoff Index | 待核对 | — | — | 验证量价力量 | C | S5 | skip |
 | IND-12 | 趋势线、支撑/阻力 | 画线 | — | high, low, close | 触碰越多越有效；假突破用背离识别 | B | S5；`unverified` | optional |
@@ -114,6 +114,16 @@
 
 ## 五、不实现清单
 
+### Optional 未实现规则
+
+| 条目 | 规则 | 状态 |
+|---|---|---|
+| IND-03 | Force Index 背离 | optional |
+| IND-05 | Stochastic 穿回阈值 | optional |
+| IND-09 | 量价确认 | optional |
+
+### 排除项
+
 | 项目 | 理由 |
 |---|---|
 | Impulse System（K 线染绿/红/蓝） | S1 明确属《Come into my Trading Room》(2002)，非 1993 年本书 |
@@ -125,6 +135,6 @@
 ## 六、待确认 / 需用户决策
 
 1. RSI 周期取 14 还是 7（无原书可证）→ 默认 14，配置可切。
-2. `optional` 四项（IND-07/08/10/12）是否实现 → 默认跳过。
+2. `optional` 指标（IND-07/08/10/12）及上述附加规则默认跳过。
 3. 目标市场与数据源（股票/加密/期货）、回测区间 → 由用户指定。
 4. 将来拿到书 → 跑 `prompts/P0-R.txt` 回填页码与原文，全部升级为 `book-confirmed`。

@@ -29,8 +29,8 @@
 | SYS-01 | 三重滤网 Triple Screen | A | 三个时间框架约 5:1 递进。第 1 重（周线/潮汐 Tide）定方向；第 2 重（日线/波浪 Wave）用振荡指标找逆大势回调；第 3 重（盘中/涟漪 Ripple）用挂单择时 | S1, S2 | implement |
 | SYS-02 | 方向铁律 | A | 第 1 重多头时整周只做多，日线级逆势卖出信号一律忽略；反之亦然。EMA 走平不交易 | S1 | implement |
 | SYS-03 | 第 1 重实现 | A | 13 周 EMA 斜率 + 周线 MACD 柱状图**最近两根柱的斜率**（不是金叉死叉）。两者共振确认趋势，冲突视为中性、不交易 | S1, S2 | implement |
-| SYS-04 | 第 2 重实现 | A | 只在大趋势内找逆势弱势/强势：升势买超卖（buy weakness），跌势卖超买（sell strength）。工具 Force Index / Elder-Ray / Stochastic / RSI / Williams %R，含背离 | S1 | implement |
-| SYS-05 | 第 3 重实现 | A | 周线多头 + 日线回调到位 → 在**昨日最高价上方**挂 buy stop；周线空头 + 日线反弹到位 → 在**昨日最低价下方**挂 sell stop。突破才成交，不预测 | S1 | implement |
+| SYS-04 | 第 2 重实现 | A | 读取 T-1 已收盘 qfq 日线。LONG：Bear Power 为负且较前一根日线上升、Stochastic K ≤ oversold、RSI ≤ oversold，任一成立即 setup。SHORT：Bull Power 为正且较前一根日线下降、Stochastic K ≥ overbought、RSI ≥ overbought，任一成立即 setup。FLAT 无 setup。简化条件基于 S1 任选振荡器的思路 | S1 | implement |
+| SYS-05 | 第 3 重实现 | A | 周线多头且日线 setup 成立时，以信号日前一交易日（T-1）的 raw 高点加 `breakout_offset_ticks × price_tick` 为 buy stop。周线空头且日线 setup 成立时，以 T-1 raw 低点减同一偏移为 sell stop。已收盘 60 分钟 K 达到阈值时产生候选信号。原始高低点字段直接记录 T-1 raw 价格，BUY 保护止损参考该日低点，SELL 参考该日高点 | S1 | implement |
 
 > ⚠️ S4 把第 3 重写成「包络线触轨 + K 线反转形态」，与 S1 复述的原版（突破前日高低点的追踪止损单）冲突。**采用 S1 版本（SYS-05）**，S4 版本记入「不实现清单」，差异写进规格文档。
 
@@ -40,13 +40,13 @@
 |---|---|---|---|---|---|---|---|
 | IND-01 | EMA 指数移动平均 | A | `EMA(close, 13)`；周线用 13 周 EMA | 斜率向上=多头，向下=空头，走平=观望 | 趋势/第1重 | S1, S2 | implement |
 | IND-02 | MACD 线 + 柱状图 | A | `MACD(12,26,9)`；`hist = macd - signal`。Elder 强调**柱状图斜率**而非绝对值 | 柱由负转正向上、或柱与价格背离，为力量转折信号 | 趋势+摆动/第1、2重 | S1, S2 | implement |
-| IND-03 | Force Index 强力指数 | A | `FI_raw = (close_t - close_{t-1}) * volume_t`；再取 `EMA(FI_raw, 2)` 短线 / `EMA(FI_raw, 13)` 中线 | FI<0 且价格底背离 → 买；FI>0 且顶背离 → 卖 | 摆动/第2重（Elder 首选） | S1, S2 | implement |
-| IND-04 | Elder-Ray 埃尔德射线 | A | `BullPower = high - EMA(close,13)`；`BearPower = low - EMA(close,13)`，直方图 | 买：收盘>13EMA + BearPower 为负但上升（最好底背离）+ BullPower 创新高；卖镜像。止损前一日低点 | 摆动/第2重 | S1, S2 | implement |
-| IND-05 | Stochastic K/D | A | 周期有分歧（S1 提 13 日）。超买超卖阈值 30/70 | 升势中等超卖后回升（跌破 30 再上穿 30）→ 买；跌势镜像。Elder 评价噪音多，优先级低于 FI | 摆动/第2重 | S1 | implement |
-| IND-06 | RSI 相对强弱 | A | **周期有分歧**：S4 写 7，市面常用 14 | 主要看背离与超买超卖，禁止单独逆势抄底摸顶 | 摆动/第2重 | S2, S4, S5 | implement |
+| IND-03 | Force Index 强力指数 | A | `FI_raw = (close_t - close_{t-1}) * volume_t`；再取 `EMA(FI_raw, 2)` 短线 / `EMA(FI_raw, 13)` 中线 | 计算后随信号输出，Force Index 背离为 optional | 摆动/第2重（Elder 首选） | S1, S2 | implement |
+| IND-04 | Elder-Ray 埃尔德射线 | A | `BullPower = high - EMA(close,13)`；`BearPower = low - EMA(close,13)`，直方图 | LONG：Bear Power 为负且回升。SHORT：Bull Power 为正且回落 | 摆动/第2重 | S1, S2 | implement |
+| IND-05 | Stochastic K/D | A | 周期有分歧（S1 提 13 日）。超买超卖阈值 30/70 | LONG：K ≤ oversold。SHORT：K ≥ overbought。穿回阈值为 optional | 摆动/第2重 | S1 | implement |
+| IND-06 | RSI 相对强弱 | A | **周期有分歧**：S4 写 7，市面常用 14 | LONG：RSI ≤ oversold。SHORT：RSI ≥ overbought | 摆动/第2重 | S2, S4, S5 | implement |
 | IND-07 | Williams %R | B | 参数待核对 | 超买超卖 + 背离 | 摆动/第2重 | S5 | optional |
 | IND-08 | 背离分类 A/B/C | B | A：价格创新高/低而指标未创新高/低（最强）；B：双顶/双底+指标走弱；C：指标持平 | A 类最强反转信号 | 摆动/全层级 | S2, S5 | optional |
-| IND-09 | 成交量 Volume | A | 原始成交量柱 | 放量上涨/缩量回调为健康；价格新高而量萎缩为乏力 | 量能/验证 | S1, S4 | implement |
+| IND-09 | 成交量 Volume | A | 原始成交量柱 | 原始成交量透传，量价确认为 optional | 量能/验证 | S1, S4 | implement |
 | IND-10 | OBV 能量潮 | B | 上涨日加量、下跌日减量累计 | 价格新高 OBV 未新高 → 动能减弱 | 量能/验证 | S4, S5 | optional |
 | IND-11 | A/D、Herrick Payoff Index | C | 公式待核对 | 验证量价力量 | 量能/验证 | S5 | skip |
 | IND-12 | 趋势线、支撑/阻力 | B | 画线 | 触碰越多越有效；假突破用背离识别 | 辅助/全层级 | S5 | optional |
@@ -76,6 +76,16 @@
 > **禁止**把上表任何数字硬编码进策略；`docs/indicators.yaml` 的 `params:` 是唯一入口。
 
 ## 五、不实现清单（含理由）
+
+### Optional 未实现规则
+
+| 条目 | 规则 | 状态 |
+|---|---|---|
+| IND-03 | Force Index 背离 | optional |
+| IND-05 | Stochastic 穿回阈值 | optional |
+| IND-09 | 量价确认 | optional |
+
+### 排除项
 
 | 项目 | 理由 | 来源 |
 |---|---|---|
