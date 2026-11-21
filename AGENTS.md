@@ -6,13 +6,22 @@
 
 做一个交易软件：加载 OHLCV 行情 → 按《以交易为生》(Alexander Elder, *Trading for a Living*) 的指标体系计算 → 在 K 线上标出买卖点 → 每个信号可追溯依据。
 
-## 当前模式：Mode B（用户没有这本书的电子版）
+## 当前模式：Mode B → P0-R 部分回填（用户只有纸质书，无电子版）
 
 - 唯一事实源：`INDICATOR_SPEC.md`（公开资料交叉核对规格 v1.0）→ P0 规范化为 `docs/INDICATORS.md` + `docs/indicators.yaml` → 代码只读 `docs/indicators.yaml`。
-- **本规格不是原书直引。** 所有 `source_page` 为 `null`。
+- **本规格不是原书直引。** Mode B 阶段所有 `source_page` 为 `null`。
 - 溯源格式固定为：`source_url + source_quote(≤50字) + confidence(A/B/C)`。
 - **严禁编造**：书页码、章节号、"书中原文""原著写道"等表述、任何引文。全仓库不得出现伪造的书内定位。
 - 规格文档、代码注释、界面依据面板统一标注：「依据：公开资料交叉核对，非原书直引」。
+
+### P0-R 部分回填例外（2026-11-21 17:42 用户确认）
+
+- 用户持有《以交易为生》（原书第 2 版，机工社 2017.6 第 1 版 / 2020.6 第 8 次印刷，ISBN 978-7-111-56972-5）纸质书，已拍来 67 张书页照片并逐行确认 `docs/book_references.csv` 的 32 行引文草稿与版本字符串。
+- **允许**为已确认条目填写真实 `source_page` / 章节号 / 短引；来源只能是 `docs/book_references.csv` 中用户已确认的行与 `docs/book_photos/` 照片，逐字抄用，不得改写、润色或推断。
+- **「严禁编造」继续有效**：只针对未经用户确认的条目。6 条待补（IND-04、IND-07、IND-10、IND-12、IND-13、RISK-03）一律保持 `source_page=null`。
+- 21 条只确认 15 条 → 全局「依据：公开资料交叉核对，非原书直引」提示**必须保留**；仅已确认条目的依据面板追加中文「书内确认：《以交易为生》（原书第2版）第 X 章 第 Y 页」。
+- 回填只改文档与展示标注；不改 `elder_indicators/` / `market_data/` / `strategy_adapters/` 代码，不重新生成 `signals.csv`，不改 `params:` / `market:` 数值。执行细则见 `prompts/P0-R.txt`，已拍板的差异决策见 `docs/BOOK_BACKFILL_DECISIONS.md`。
+- 现有规格体系基于 1993 年第 1 版公开资料重建；书内确认一律标 `book-confirmed(第2版)` 并注明版本，禁止伪装为第 1 版证据、禁止混用两版页码。
 
 ## 五条铁律
 
@@ -49,7 +58,7 @@
 
 ## 阶段顺序
 
-`prompts/P0.txt`（规格）与 `prompts/P1.txt`（选型）可并行；`P2`（实现）前两者必须都完成；之后 `P3`（界面）→ `P4`（验收）。将来拿到书再跑 `P0-R.txt` 回填。
+`prompts/P0.txt`（规格）与 `prompts/P1.txt`（选型）可并行；`P2`（实现）前两者必须都完成；之后 `P3`（界面）→ `P4`（验收）→ `P4-R`（修正轮）。**P0~P4 已全部收官；当前阶段是 `P0-R.txt` 纸质书部分回填**（用户已确认 32 行草稿与 D1~D8 决策，见 `docs/BOOK_BACKFILL_DECISIONS.md`）。
 
 ## 目标市场：A 股（沪深，2026-11-20 23:00 用户确认）
 
