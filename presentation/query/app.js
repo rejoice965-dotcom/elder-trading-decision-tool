@@ -3,7 +3,7 @@
   const spec = window.ELDER_SPEC;
   const params = spec.params;
   const $ = (id) => document.getElementById(id);
-  const state = {symbol:null, marketCode:null, name:"", dailyQfq:[], dailyRaw:[], weeklyQfq:[], minute:[], decision:null, history:[], retry:false, chart:null, series:null, subcharts:[], chartPanes:[], syncingRange:false, syncingCrosshair:false, markers:[], overlay:"ma", track:"qfq"};
+  const state = {symbol:null, marketCode:null, name:"", dailyQfq:[], dailyRaw:[], weeklyQfq:[], minute:[], decision:null, history:[], retry:false, chart:null, series:null, livePriceLine:null, subcharts:[], chartPanes:[], syncingRange:false, syncingCrosshair:false, markers:[], overlay:"ma", track:"qfq", liveQuote:null, liveTimer:null, liveRequestId:0, liveBusy:false};
   let debounceTimer = null;
 
   function number(value) { if(value==null||String(value).trim()==="")return null;const n = Number(value); return Number.isFinite(n) ? n : null; }
@@ -54,6 +54,21 @@
     }
     throw last || new Error("行情请求失败");
   }
+  async function fetchTencentQuote(code) {
+    const response=await fetch(`https://qt.gtimg.cn/q=${code}&_=${Date.now()}`,{cache:"no-store"});
+    if(!response.ok)throw new Error(`实时行情服务返回 ${response.status}`);
+    const text=new TextDecoder("gbk").decode(await response.arrayBuffer());
+    const match=text.match(/="([^"]*)"/);
+    if(!match)throw new Error("实时行情内容无法识别");
+    const fields=match[1].split("~");
+    const current=number(fields[3]),previousClose=number(fields[4]);
+    if(!(current>0&&previousClose>0))throw new Error("实时行情暂不可用");
+    const sourceStamp=String(fields[30]||"");
+    const sourceTime=/^\d{14}$/.test(sourceStamp)
+      ? `${sourceStamp.slice(0,4)}-${sourceStamp.slice(4,6)}-${sourceStamp.slice(6,8)} ${sourceStamp.slice(8,10)}:${sourceStamp.slice(10,12)}:${sourceStamp.slice(12,14)}`
+      : null;
+    return {name:fields[1],current,previousClose,open:number(fields[5]),volume:(number(fields[6])||0)*100,high:number(fields[33]),low:number(fields[34]),sourceTime,changePct:(current/previousClose-1)*100,fetchedAt:new Date()};
+  }
   async function fetchName(code) {
     try {
       const response = await fetch(`https://qt.gtimg.cn/q=${code}`,{cache:"no-store"});
@@ -67,6 +82,7 @@
     let parsed;
     try { parsed=ElderEngine.normalizeSymbol(input); }
     catch (error) { setQuerySurface(false); showError(error.message); return; }
+    clearTimeout(state.liveTimer);state.liveRequestId+=1;state.liveBusy=false;state.liveQuote=null;renderLiveQuote(null,"正在连接行情源");
     const button=$("query-button"); button.disabled=true;
     setQuerySurface(false);
     setStatus(`${parsed.symbol} 行情加载中…`);
@@ -94,7 +110,8 @@
       $("stock-title").textContent=`${state.symbol} ${state.name}`;
       setQuerySurface(true);
       renderDecision();renderHistory();renderCharts();
-      setStatus(`行情截至 ${state.dailyQfq.at(-1).date}，腾讯公开行情接口，非实时。日线 ${state.dailyQfq.length} 根，周线 ${state.weeklyQfq.length} 根${minute.length?`，分钟数据覆盖 ${minute[0].date} 至 ${minute.at(-1).date}`:"，60 分钟接口不可用，触发条件按日线近似"}`);
+      setStatus(`已收盘行情截至 ${state.dailyQfq.at(-1).date}。日线 ${state.dailyQfq.length} 根，周线 ${state.weeklyQfq.length} 根${minute.length?`，分钟数据覆盖 ${minute[0].date} 至 ${minute.at(-1).date}`:"，60 分钟接口不可用，触发条件按日线近似"}`);
+      startLiveQuote(parsed.marketCode);
     } catch (error) { document.title=`${parsed.symbol} 查询失败`;$("stock-title").textContent=`${parsed.symbol} 查询失败`;setQuerySurface(false);showError(`${parsed.symbol} 查询失败：${friendlyError(error)}`); }
     finally { button.disabled=false; }
   }
@@ -108,6 +125,70 @@
   function showError(message) {
     const line=$("status-line");line.className="status-line error";line.textContent=message;
     const retry=document.createElement("button");retry.className="retry";retry.textContent="重试";retry.type="button";retry.onclick=()=>loadSymbol($("symbol-input").value);line.append(" ",retry);
+  }
+  function inTradingSession(now=new Date()) {
+    const shanghai=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Shanghai",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(now).split(":").map(Number);
+    const current=shanghai[0]*60+shanghai[1];
+    const sessions=spec.market.trading_sessions;
+    return [[sessions.morning_open,sessions.morning_close],[sessions.afternoon_open,sessions.afternoon_close]].some(([start,end])=>{
+      const toMinutes=(clock)=>{const [hour,minute]=clock.split(":").map(Number);return hour*60+minute;};
+      return current>=toMinutes(start)&&current<=toMinutes(end);
+    });
+  }
+  function formatBeijingTime(value) {
+    return new Intl.DateTimeFormat("zh-CN",{timeZone:"Asia/Shanghai",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}).format(value);
+  }
+  function renderLiveQuote(quote,status) {
+    const dot=$("live-connection"),connection=$("live-source-time");
+    const sourceIsToday=quote&&quote.sourceTime&&quote.sourceTime.slice(0,10)===shanghaiDate();
+    const freshness=status==="error"?"error":status==="connected"&&quote?(sourceIsToday?"connected":"stale"):"";
+    dot.className=`connection-dot ${freshness}`;
+    if(!quote){connection.textContent=status==="error"?"实时行情连接失败，正在重试":status;$("live-last").textContent="—";$("live-change").textContent="—";$("live-ohlc").textContent="开 —　高 —　低 —";$("live-volume").textContent="成交量 —";return;}
+    $("live-last").textContent=`¥${quote.current.toFixed(2)}`;
+    const change=$("live-change");change.textContent=`${quote.changePct>=0?"+":""}${quote.changePct.toFixed(2)}%`;change.className=`live-change ${quote.changePct>0?"live-up":quote.changePct<0?"live-down":""}`;
+    $("live-ohlc").textContent=`开 ${fmt(quote.open)}　高 ${fmt(quote.high)}　低 ${fmt(quote.low)}`;
+    $("live-volume").textContent=`成交量 ${quote.volume.toLocaleString("zh-CN")} 股`;
+    const quoteState=sourceIsToday?"当日行情":status==="error"?"连接失败，保留上次行情":"行情源未更新（休市或延迟）";
+    connection.textContent=`行情源时间 ${quote.sourceTime||"未提供"} · ${quoteState}`;
+    $("live-refresh-time").textContent=`刷新于 ${formatBeijingTime(quote.fetchedAt)} 北京时间`;
+  }
+  function scheduleLiveQuote(code,requestId,delay) {
+    clearTimeout(state.liveTimer);
+    state.liveTimer=setTimeout(()=>pollLiveQuote(code,requestId),delay);
+  }
+  async function pollLiveQuote(code,requestId) {
+    if(requestId!==state.liveRequestId||state.liveBusy)return;
+    if(document.hidden){scheduleLiveQuote(code,requestId,30000);return;}
+    state.liveBusy=true;
+    try{
+      const quote=await fetchTencentQuote(code);
+      if(requestId!==state.liveRequestId)return;
+      const previous=state.liveQuote&&state.liveQuote.current;
+      state.liveQuote=quote;renderLiveQuote(quote,"connected");
+      updateLivePriceLine();
+      if(previous!==quote.current){$("live-price").classList.remove("flash");void $("live-price").offsetWidth;$("live-price").classList.add("flash");}
+    }catch(error){if(requestId===state.liveRequestId)renderLiveQuote(state.liveQuote,"error");}
+    finally{
+      state.liveBusy=false;
+      if(requestId===state.liveRequestId)scheduleLiveQuote(code,requestId,inTradingSession()?5000:30000);
+    }
+  }
+  function startLiveQuote(code) {
+    const requestId=++state.liveRequestId;
+    scheduleLiveQuote(code,requestId,0);
+  }
+  function liveChartPrice() {
+    if(!state.liveQuote)return null;
+    if(state.track==="raw")return state.liveQuote.current;
+    const rawClose=state.dailyRaw.at(-1)?.close,qfqClose=state.dailyQfq.at(-1)?.close;
+    return rawClose&&qfqClose?state.liveQuote.current*qfqClose/rawClose:state.liveQuote.current;
+  }
+  function updateLivePriceLine() {
+    if(!state.series)return;
+    if(state.livePriceLine){state.series.removePriceLine(state.livePriceLine);state.livePriceLine=null;}
+    const price=liveChartPrice();
+    if(price==null)return;
+    state.livePriceLine=state.series.createPriceLine({price,color:state.liveQuote.changePct>=0?"#c73838":"#167a57",lineWidth:1,lineStyle:2,axisLabelVisible:true,title:"最新价"});
   }
   function setupName(direction, vals) {
     if (direction > 0) {
@@ -307,6 +388,7 @@
     if(!state.dailyQfq.length)return;
     renderOverlayControls();renderSubchartControls();
     if(state.chart)state.chart.remove();
+    state.livePriceLine=null;
     state.subcharts.forEach((chart)=>chart.remove());
     state.chartPanes=[];
     const rows=state.track==="raw"?state.dailyRaw:state.dailyQfq;
@@ -316,6 +398,7 @@
     const container=$("price-chart");container.innerHTML="";const tooltipNode=document.createElement("div");tooltipNode.id="chart-tooltip";tooltipNode.className="chart-tooltip";container.append(tooltipNode);
     state.chart=makeChart(container,340);state.series=state.chart.addCandlestickSeries({upColor:"#c73838",downColor:"#167a57",borderUpColor:"#c73838",borderDownColor:"#167a57",wickUpColor:"#c73838",wickDownColor:"#167a57",priceFormat:{type:"price",precision:2,minMove:0.01}});
     state.series.setData(plotRows.map((r)=>r.open==null?{time:r.date}:{time:r.date,open:r.open,high:r.high,low:r.low,close:r.close}));
+    updateLivePriceLine();
     registerSynchronizedPane(state.chart,state.series,new Map(rows.map((row)=>[row.date,row.close])));
     const overlay=state.overlay;
     if(overlay==="ma"||overlay==="ema"){
@@ -392,6 +475,11 @@
     $("track-select").addEventListener("change",(event)=>{state.track=event.target.value;renderCharts();});
     $("overlay-select").addEventListener("change",(event)=>{state.overlay=event.target.value;renderCharts();});
     $("markers-toggle").addEventListener("change",renderCharts);
+    document.addEventListener("visibilitychange",()=>{
+      if(!state.marketCode)return;
+      if(document.hidden)scheduleLiveQuote(state.marketCode,state.liveRequestId,30000);
+      else scheduleLiveQuote(state.marketCode,state.liveRequestId,0);
+    });
   }
   let toastTimer=null;
   function showToast(message){const toast=$("toast");toast.textContent=message;toast.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove("show"),3200);}

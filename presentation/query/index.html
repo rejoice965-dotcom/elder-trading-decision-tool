@@ -22,6 +22,11 @@
   <main>
     <div id="status-line" class="status-line" role="status">正在加载行情…</div>
     <section class="decision-shell" aria-label="当前交易决策">
+      <div class="live-quote" aria-live="polite">
+        <div class="live-price" id="live-price"><span class="live-label">最新行情</span><strong id="live-last">等待行情</strong><span id="live-change" class="live-change">—</span></div>
+        <div class="live-details"><span id="live-ohlc">开 —　高 —　低 —</span><span id="live-volume">成交量 —</span></div>
+        <div class="live-status"><span id="live-connection" class="connection-dot"></span><span id="live-source-time">行情源时间等待中</span><span id="live-refresh-time"></span></div>
+      </div>
       <div class="decision-heading">
         <div><p class="eyebrow">最新已收盘日线 · 三重滤网</p><h1 id="stock-title">交易决策</h1><div id="quote-meta" class="quote-meta"></div></div>
         <div class="decision-state state-wait" id="decision-state"><b>WAIT</b><span>观望</span></div>
@@ -72,7 +77,7 @@
       <div id="price-chart" class="price-chart"><div id="chart-tooltip" class="chart-tooltip"></div></div>
       <div id="subchart-controls" class="subchart-controls"></div>
       <div id="subcharts" class="subcharts"></div>
-      <div class="data-footnote">行情数据：腾讯公开行情接口（非实时），成交量原始单位为手，已换算为股。线上指标基于腾讯前复权口径，与项目回测缓存（akshare 前复权）可能存在细微差异；判定阈值（30/70、突破价）不受影响。沪深股票涨红跌绿。缺少行情的工作日留白（可能为停牌或非交易日）。A 股 T+1，普通股票买入后下一交易日方可卖出。</div>
+      <div class="data-footnote">最新价每 5 秒轮询（交易时段），休市时每 30 秒检查；数据新鲜度以“行情源时间”为准。技术指标和买卖判断基于最近已收盘 K 线。成交量原始单位为手，已换算为股。线上指标基于腾讯前复权口径，与项目回测缓存（akshare 前复权）可能存在细微差异；判定阈值（30/70、突破价）不受影响。沪深股票涨红跌绿。缺少行情的工作日留白（可能为停牌或非交易日）。A 股 T+1，普通股票买入后下一交易日方可卖出。</div>
     </section>
     <section class="provenance-note">依据：公开资料交叉核对，非原书直引</section>
   </main>

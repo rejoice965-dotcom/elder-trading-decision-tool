@@ -8,6 +8,10 @@ window.ELDER_SPEC = {
     profit_protect_ratio: 0.50
   },
   market: {
+    trading_sessions: {
+      morning_open: "09:30", morning_close: "11:30",
+      afternoon_open: "13:00", afternoon_close: "15:00"
+    },
     board_limit_pct: {main_board: 0.10, chinext: 0.20, star_market: 0.20,
       beijing_stock_exchange: 0.30, st: 0.05},
     board_code_prefixes: {
