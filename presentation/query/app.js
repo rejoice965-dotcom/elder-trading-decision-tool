@@ -14,14 +14,16 @@
     if (!root) throw new Error("行情源未返回该股票的数据");
     const field = Object.keys(root).find((item) => /^(qfq)?(day|week)$/.test(item));
     if (!field || !Array.isArray(root[field])) throw new Error("行情数据格式暂不可用");
-    return root[field].map((bar) => ({date:String(bar[0]).slice(0,10),open:number(bar[1]),close:number(bar[2]),high:number(bar[3]),low:number(bar[4]),volume:number(bar[5]) || 0})).filter((bar) => bar.date && bar.open != null && bar.close != null && bar.high != null && bar.low != null).sort((a,b) => a.date.localeCompare(b.date));
+    // Tencent volume is in lots (手). Convert to shares before indicator calculations.
+    return root[field].map((bar) => ({date:String(bar[0]).slice(0,10),open:number(bar[1]),close:number(bar[2]),high:number(bar[3]),low:number(bar[4]),volume:(number(bar[5]) || 0) * 100})).filter((bar) => bar.date && bar.open != null && bar.close != null && bar.high != null && bar.low != null).sort((a,b) => a.date.localeCompare(b.date));
   }
   function decodeMinute(payload, key) {
     const root = payload && payload.data && payload.data[key];
     const values = root && (root.m60 || root.m60v);
     if (!Array.isArray(values)) return [];
     const today = shanghaiDate();
-    return values.map((bar) => ({date:normalizeDate(bar[0]),open:number(bar[1]),close:number(bar[2]),high:number(bar[3]),low:number(bar[4]),volume:number(bar[5]) || 0})).filter((bar) => bar.date && bar.high != null && !(bar.date === today && !isShanghaiClose())).sort((a,b) => a.date.localeCompare(b.date));
+    // Tencent volume is in lots (手). Convert to shares before indicator calculations.
+    return values.map((bar) => ({date:normalizeDate(bar[0]),open:number(bar[1]),close:number(bar[2]),high:number(bar[3]),low:number(bar[4]),volume:(number(bar[5]) || 0) * 100})).filter((bar) => bar.date && bar.high != null && !(bar.date === today && !isShanghaiClose())).sort((a,b) => a.date.localeCompare(b.date));
   }
   function normalizeDate(value) {
     const text=String(value);
@@ -241,6 +243,7 @@
     const rows=state.track==="raw"?state.dailyRaw:state.dailyQfq;
     const plotRows=withWeekdayGaps(rows);
     const vals=ElderEngine.calculate(rows,params);
+    renderOverlayLegend(rows,vals);
     const container=$("price-chart");container.innerHTML="";const tooltipNode=document.createElement("div");tooltipNode.id="chart-tooltip";tooltipNode.className="chart-tooltip";container.append(tooltipNode);
     state.chart=makeChart(container,340);state.series=state.chart.addCandlestickSeries({upColor:"#c73838",downColor:"#167a57",borderUpColor:"#c73838",borderDownColor:"#167a57",wickUpColor:"#c73838",wickDownColor:"#167a57",priceFormat:{type:"price",precision:2,minMove:0.01}});
     state.series.setData(plotRows.map((r)=>r.open==null?{time:r.date}:{time:r.date,open:r.open,high:r.high,low:r.low,close:r.close}));
@@ -265,6 +268,24 @@
     $("overlay-params").innerHTML="";
     const controls=state.overlay==="ma"?[["MA 周期",state.maPeriods.join(",")]]:state.overlay==="ema"?[["EMA 周期",state.emaPeriods.join(",")]]:state.overlay==="boll"?[["BOLL 周期",String(state.bollPeriod)],["标准差倍数",String(state.bollDeviation)]]:[];
     controls.forEach(([label,value],index)=>{const span=document.createElement("label");span.className="period-control";span.textContent=`${label} `;const input=document.createElement("input");input.value=value;input.setAttribute("aria-label",label);input.addEventListener("change",()=>{const values=input.value.split(",").map(Number).filter((x)=>Number.isInteger(x)&&x>0);if(state.overlay==="ma"&&values.length)state.maPeriods=values;if(state.overlay==="ema"&&values.length)state.emaPeriods=values;if(state.overlay==="boll"&&index===0&&values[0])state.bollPeriod=values[0];if(state.overlay==="boll"&&index===1&&values[0])state.bollDeviation=values[0];renderCharts();});span.append(input);$("overlay-params").append(span);});
+  }
+  function renderOverlayLegend(rows,values) {
+    const host=$("overlay-legend"),last=rows.length-1;
+    const entry=(label,value,color)=>`<span class="legend-item"><i class="legend-dot" style="background:${color}"></i>${label} ${value==null?"—":`¥${value.toFixed(2)}`}</span>`;
+    if(state.overlay==="boll"){
+      const bands=boll(rows.map((row)=>row.close),state.bollPeriod,state.bollDeviation);
+      host.innerHTML=[entry(`BOLL 上轨 (${state.bollPeriod},${state.bollDeviation})`,bands.upper[last],"#947020"),entry(`BOLL 中轨 (${state.bollPeriod})`,bands.middle[last],"#315f7a"),entry(`BOLL 下轨 (${state.bollPeriod},${state.bollDeviation})`,bands.lower[last],"#947020")].join("");
+      return;
+    }
+    if(state.overlay==="ema"){
+      host.innerHTML=state.emaPeriods.map((period,index)=>entry(`EMA(${period})`,ElderEngine.ema(rows.map((row)=>row.close),period)[last],["#315f7a","#947020","#8a5d74","#609176"][index%4])).join("");
+      return;
+    }
+    if(state.overlay==="ma"){
+      host.innerHTML=state.maPeriods.map((period,index)=>entry(`MA(${period})`,simpleMA(rows.map((row)=>row.close),period)[last],["#315f7a","#947020","#8a5d74","#609176"][index%4])).join("");
+      return;
+    }
+    host.innerHTML="";
   }
   function renderSubchartControls() {
     const entries=[["macd","MACD"],["rsi","RSI"],["force","Force Index"],["elder","Elder-Ray"],["stoch","随机指标"]];
