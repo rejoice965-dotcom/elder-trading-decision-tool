@@ -3,7 +3,7 @@
   const spec = window.ELDER_SPEC;
   const params = spec.params;
   const $ = (id) => document.getElementById(id);
-  const state = {symbol:null, marketCode:null, name:"", dailyQfq:[], dailyRaw:[], weeklyQfq:[], minute:[], decision:null, history:[], retry:false, chart:null, series:null, subcharts:[], markers:[], overlay:"ma", track:"qfq"};
+  const state = {symbol:null, marketCode:null, name:"", dailyQfq:[], dailyRaw:[], weeklyQfq:[], minute:[], decision:null, history:[], retry:false, chart:null, series:null, subcharts:[], chartPanes:[], syncingRange:false, syncingCrosshair:false, markers:[], overlay:"ma", track:"qfq"};
   let debounceTimer = null;
 
   function number(value) { if(value==null||String(value).trim()==="")return null;const n = Number(value); return Number.isFinite(n) ? n : null; }
@@ -126,7 +126,7 @@
     if (d.insufficient) {
       $("decision-state").className="decision-state state-wait";$("decision-state").innerHTML="<b>WAIT</b><span>观望</span>";
       $("decision-reason").textContent=`数据不足，无法判断（周线 ${d.debug.weekly} 根，日线 ${d.debug.daily} 根）`;
-      $("gate-strip").innerHTML="";$("quote-meta").textContent="数据不足";return;
+      $("gate-strip").innerHTML="";$("quote-meta").textContent="数据不足";renderRationale(d);return;
     }
     const stateEl=$("decision-state");
     if (d.state === "BUY") {stateEl.className="decision-state state-buy";stateEl.innerHTML="<b>BUY</b><span>买入候选</span>";}
@@ -142,6 +142,7 @@
       {name:"第 3 重 · T-1 突破",ok:d.trigger,text:d.trigger?"已触发 / 可评估挂单":d.direction===0?"第一重阻断，未执行触发":`等待 ¥${d.stopEntry.toFixed(2)}`,rule:"SYS-05"}
     ];
     $("gate-strip").innerHTML=gates.map((g)=>`<div class="gate"><span>${g.name} · ${g.rule}</span><strong class="${g.ok?"pass":"fail"}">${escapeHtml(g.text)}</strong></div>`).join("");
+    renderRationale(d,setupLabel);
     const entry=d.direction===0?null:d.trigger?d.entryPrice:d.stopEntry, stop=d.stopLoss;
     const target=entry==null||d.direction<0?null:state.dailyRaw.slice(-60).map((r)=>r.high).filter((v)=>v>Math.max(entry,d.close)).sort((a,b)=>a-b)[0]||null;
     $("entry-label").textContent=d.direction<0?"卖出触发参考":"候选入场";
@@ -170,6 +171,30 @@
     if(halted)warnings.push("月度 6% 风控已触发，不可新开仓");
     $("trade-warning").textContent=warnings.join("；");
     renderEvidence(gates,setupLabel,plan,entry,stop);
+  }
+  function renderRationale(d,setupLabel="数据不足，暂不能评估 setup") {
+    const host=$("rationale-content");
+    if(d.insufficient){host.innerHTML=`<article class="rationale-item"><h3>当前判断</h3><p>${escapeHtml(d.reason)}</p></article><article class="rationale-item"><h3>基本面与消息</h3><p>当前未接入财报、公告或新闻数据，需人工核验后再决策。</p></article>`;return;}
+    const directionReason=d.direction===1
+      ? `第 1 重通过，周线 EMA 斜率 ${val(d.values.weeklyEmaSlope)}、MACD 柱斜率 ${val(d.values.weeklyHistogramSlope)} 均为正，允许寻找做多机会。`
+      : d.direction===-1
+        ? `周线方向偏空，EMA 斜率 ${val(d.values.weeklyEmaSlope)}、MACD 柱斜率 ${val(d.values.weeklyHistogramSlope)} 均为负。A 股仅提示已有持仓者管理风险，不做空。`
+        : `第 1 重方向未确认，EMA 斜率 ${val(d.values.weeklyEmaSlope)} 与 MACD 柱斜率 ${val(d.values.weeklyHistogramSlope)} 未同向，因此禁止新开多仓。`;
+    const setupReason=d.setup?`第 2 重成立：${setupLabel}。`:`第 2 重未成立：${setupLabel}，暂缺少逆势回调条件。`;
+    const triggerReason=d.trigger
+      ? `第 3 重已触发，参考价 ¥${d.stopEntry.toFixed(2)}，当日高低点为 ¥${d.values.barHighRaw.toFixed(2)} / ¥${d.values.barLowRaw.toFixed(2)}。`
+      : d.direction===0
+        ? "第 1 重未通过，后续触发不构成买入信号。"
+        : `第 3 重尚未触发，等待 T-1 结构价 ¥${d.stopEntry.toFixed(2)}。`;
+    const daily=state.dailyRaw,latest=daily.at(-1),lookback=daily.slice(-21),prior=lookback.slice(0,-1);
+    const return20=lookback.length>=21&&lookback[0].close?(latest.close/lookback[0].close-1)*100:null;
+    const averageVolume=prior.length?prior.reduce((sum,row)=>sum+row.volume,0)/prior.length:null;
+    const volumeRatio=averageVolume?latest.volume/averageVolume:null;
+    const range= daily.slice(-20),high=range.length?Math.max(...range.map((row)=>row.high)):null,low=range.length?Math.min(...range.map((row)=>row.low)):null;
+    const rangePosition=high!=null&&high>low?(latest.close-low)/(high-low)*100:null;
+    const marketInfo=`近 20 个交易日涨跌幅 ${pct(return20)}；最新日成交量 ${latest.volume.toLocaleString("zh-CN")} 股${volumeRatio==null?"":`，约为此前 20 日均量的 ${volumeRatio.toFixed(2)} 倍`}；收盘位于 20 日高低区间 ${rangePosition==null?"—":`${rangePosition.toFixed(1)}%`}。`;
+    const action=d.state==="BUY"?"买入候选由周线多头、日线 setup 和突破触发共同支持，仍需结合仓位及成交限制执行。":d.state==="SELL"?"出现向下方向信号，仅供已有持仓者评估减仓或平仓，不建立空头。":`当前观望：${d.reason}。`;
+    host.innerHTML=`<article class="rationale-item"><h3>判断依据</h3><p>${escapeHtml(action)}</p><p>${escapeHtml(directionReason)}</p><p>${escapeHtml(setupReason)}</p><p>${escapeHtml(triggerReason)}</p></article><article class="rationale-item"><h3>近期市场信息</h3><p>截至 ${escapeHtml(d.date)}，${escapeHtml(marketInfo)}</p></article><article class="rationale-item rationale-caveat"><h3>基本面核验</h3><p>当前行情源未提供经核验的财报、业绩预告、公告或行业消息。本判断不含基本面评价，交易前请核对最新披露信息。</p></article>`;
   }
   function renderEvidence(gates, setupLabel, plan, entry, stop) {
     const d=state.decision, nodes=[];
@@ -232,14 +257,58 @@
   }
 
   function formatZhDate(date) { const [y,m,d]=date.split("-").map(Number);return `${y}年${m}月${d}日`; }
-  function makeChart(container,height=130) {
-    return LightweightCharts.createChart(container,{height,layout:{background:{color:"#fff"},textColor:"#586366",fontFamily:"-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif",fontSize:11},grid:{vertLines:{color:"#eef0ef"},horzLines:{color:"#eef0ef"}},rightPriceScale:{borderColor:"#d8dfdf"},timeScale:{borderColor:"#d8dfdf",timeVisible:false,tickMarkFormatter:(time)=>{const date=typeof time==="string"?time:new Date(Date.UTC(time.year,time.month-1,time.day)).toISOString().slice(0,10);return formatZhDate(date);}},localization:{locale:"zh-CN",priceFormatter:(price)=>`¥${price.toFixed(2)}`},crosshair:{mode:LightweightCharts.CrosshairMode.Normal}});
+  function makeChart(container,height=130,priceFormatter=(price)=>`¥${price.toFixed(2)}`) {
+    return LightweightCharts.createChart(container,{height,layout:{background:{color:"#fff"},textColor:"#586366",fontFamily:"-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif",fontSize:11},grid:{vertLines:{color:"#eef0ef"},horzLines:{color:"#eef0ef"}},rightPriceScale:{borderColor:"#d8dfdf"},timeScale:{borderColor:"#d8dfdf",timeVisible:false,tickMarkFormatter:(time,tickMarkType)=>formatChinaTick(time,tickMarkType)},localization:{locale:"zh-CN",timeFormatter:(time)=>`${formatZhDate(chartDate(time))} 北京时间`,priceFormatter},crosshair:{mode:LightweightCharts.CrosshairMode.Normal}});
+  }
+  function chartDate(time) {
+    if(typeof time==="number")return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Shanghai",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(time*1000));
+    return typeof time==="string"?time:`${time.year}-${String(time.month).padStart(2,"0")}-${String(time.day).padStart(2,"0")}`;
+  }
+  function formatChinaTick(time,tickMarkType) {
+    const [year,month,day]=chartDate(time).split("-").map(Number);
+    if(tickMarkType===0)return `${year}年`;
+    if(tickMarkType===1)return `${year}年${month}月`;
+    return `${month}月${day}日`;
+  }
+  function registerSynchronizedPane(chart,series,valuesByDate) {
+    const pane={chart,series,valuesByDate};
+    state.chartPanes.push(pane);
+    chart.timeScale().subscribeVisibleLogicalRangeChange((range)=>{
+      if(!range||state.syncingRange)return;
+      state.syncingRange=true;
+      state.chartPanes.forEach((other)=>{if(other!==pane)other.chart.timeScale().setVisibleLogicalRange(range);});
+      state.syncingRange=false;
+    });
+    chart.subscribeCrosshairMove((param)=>{
+      if(state.syncingCrosshair)return;
+      state.syncingCrosshair=true;
+      if(!param.time){
+        state.chartPanes.forEach((other)=>{if(other!==pane)other.chart.clearCrosshairPosition();});
+      }else{
+        const date=chartDate(param.time);
+        state.chartPanes.forEach((other)=>{
+          if(other===pane)return;
+          const value=other.valuesByDate.get(date);
+          if(Number.isFinite(value))other.chart.setCrosshairPosition(value,param.time,other.series);
+          else other.chart.clearCrosshairPosition();
+        });
+      }
+      state.syncingCrosshair=false;
+    });
+  }
+  function alignPaneRanges() {
+    const range=state.chart&&state.chart.timeScale().getVisibleLogicalRange();
+    if(!range)return;
+    state.syncingRange=true;
+    state.chartPanes.forEach((pane)=>{if(pane.chart!==state.chart)pane.chart.timeScale().setVisibleLogicalRange(range);});
+    state.syncingRange=false;
   }
   function renderCharts() {
     if(!state.dailyQfq.length)return;
     renderOverlayControls();renderSubchartControls();
     if(state.chart)state.chart.remove();
     state.subcharts.forEach((chart)=>chart.remove());
+    state.chartPanes=[];
     const rows=state.track==="raw"?state.dailyRaw:state.dailyQfq;
     const plotRows=withWeekdayGaps(rows);
     const vals=ElderEngine.calculate(rows,params);
@@ -247,6 +316,7 @@
     const container=$("price-chart");container.innerHTML="";const tooltipNode=document.createElement("div");tooltipNode.id="chart-tooltip";tooltipNode.className="chart-tooltip";container.append(tooltipNode);
     state.chart=makeChart(container,340);state.series=state.chart.addCandlestickSeries({upColor:"#c73838",downColor:"#167a57",borderUpColor:"#c73838",borderDownColor:"#167a57",wickUpColor:"#c73838",wickDownColor:"#167a57",priceFormat:{type:"price",precision:2,minMove:0.01}});
     state.series.setData(plotRows.map((r)=>r.open==null?{time:r.date}:{time:r.date,open:r.open,high:r.high,low:r.low,close:r.close}));
+    registerSynchronizedPane(state.chart,state.series,new Map(rows.map((row)=>[row.date,row.close])));
     const overlay=state.overlay;
     if(overlay==="ma"||overlay==="ema"){
       const periods=overlay==="ma"?state.maPeriods:state.emaPeriods;
@@ -257,11 +327,12 @@
     }
     if($("markers-toggle").checked)state.series.setMarkers(state.markers.filter((m)=>rows.some((r)=>r.date===m.time)).map((m)=>({time:m.time,position:m.side==="BUY"?"belowBar":"aboveBar",color:m.side==="BUY"?"#c73838":"#167a57",shape:m.side==="BUY"?"arrowUp":"arrowDown",text:m.side==="BUY"?"买":"卖"})));
     const tooltip=$("chart-tooltip");
-    state.chart.subscribeCrosshairMove((param)=>{if(!param.time||!param.seriesData){tooltip.classList.remove("visible");return;}const bar=param.seriesData.get(state.series);if(!bar){tooltip.classList.remove("visible");return;}const date=typeof param.time==="string"?param.time:`${param.time.year}-${String(param.time.month).padStart(2,"0")}-${String(param.time.day).padStart(2,"0")}`;tooltip.textContent=`${formatZhDate(date)}　开 ¥${bar.open.toFixed(2)}　高 ¥${bar.high.toFixed(2)}　低 ¥${bar.low.toFixed(2)}　收 ¥${bar.close.toFixed(2)}`;tooltip.classList.add("visible");});
+    state.chart.subscribeCrosshairMove((param)=>{if(!param.time||!param.seriesData){tooltip.classList.remove("visible");return;}const bar=param.seriesData.get(state.series);if(!bar){tooltip.classList.remove("visible");return;}const date=chartDate(param.time);tooltip.textContent=`${formatZhDate(date)} 北京时间　开 ¥${bar.open.toFixed(2)}　高 ¥${bar.high.toFixed(2)}　低 ¥${bar.low.toFixed(2)}　收 ¥${bar.close.toFixed(2)}`;tooltip.classList.add("visible");});
     state.chart.subscribeClick((param)=>{if(!param.time)return;const date=typeof param.time==="string"?param.time:`${param.time.year}-${String(param.time.month).padStart(2,"0")}-${String(param.time.day).padStart(2,"0")}`;const marker=state.markers.find((item)=>item.time===date);if(marker){const v=marker.values;showToast(`${marker.side} · ${marker.rule_id} · ${marker.source_quote} · confidence ${marker.confidence} · 入场 ${fmt(marker.entry)} / 止损 ${fmt(marker.stop)} · RSI ${val(v.rsi)} / K ${val(v.stoch)} / Force ${val(v.force)} · ${marker.source_url}`);}});
     $("subcharts").innerHTML="";state.subcharts=[];
     const selected=[...document.querySelectorAll("[data-sub]:checked")].map((e)=>e.dataset.sub);
     selected.forEach((name)=>renderSubchart(name,rows,vals));
+    alignPaneRanges();
   }
   state.maPeriods=[5,10,20,60];state.emaPeriods=[13,26];state.bollPeriod=20;state.bollDeviation=2;
   function renderOverlayControls() {
@@ -288,19 +359,28 @@
     host.innerHTML="";
   }
   function renderSubchartControls() {
-    const entries=[["macd","MACD"],["rsi","RSI"],["force","Force Index"],["elder","Elder-Ray"],["stoch","随机指标"]];
-    $("subchart-controls").innerHTML=entries.map(([id,label])=>`<label><input type="checkbox" data-sub="${id}" ${id==="macd"||id==="rsi"?"checked":""}>${label}</label>`).join("");
+    const entries=[["volume","成交量"],["macd","MACD"],["rsi","RSI"],["force","Force Index"],["elder","Elder-Ray"],["stoch","随机指标"]];
+    $("subchart-controls").innerHTML=entries.map(([id,label])=>`<label><input type="checkbox" data-sub="${id}" ${id==="volume"||id==="macd"||id==="rsi"?"checked":""}>${label}</label>`).join("");
     document.querySelectorAll("[data-sub]").forEach((input)=>input.addEventListener("change",renderCharts));
   }
   function renderSubchart(name,rows,values) {
-    const section=document.createElement("section");section.className="subchart";const title=document.createElement("h3");title.textContent=({macd:`MACD(${params.macd_fast},${params.macd_slow},${params.macd_signal})`,rsi:`RSI(${params.rsi_period})`,force:`Force Index EMA(${params.fi_ema})`,elder:`Elder-Ray EMA(${params.ema_period})`,stoch:`Stochastic(${params.stoch_k},${params.stoch_d})`})[name];const canvas=document.createElement("div");canvas.className="canvas";section.append(title,canvas);$("subcharts").append(section);
-    const chart=makeChart(canvas,132);state.subcharts.push(chart);const plotRows=withWeekdayGaps(rows),dateIndex=new Map(rows.map((r,i)=>[r.date,i]));
-    const add=(data,color,style=0)=>{const line=chart.addLineSeries({color,lineWidth:1,priceLineVisible:false,lastValueVisible:true,lineStyle:style});line.setData(plotRows.map((r)=>{const i=dateIndex.get(r.date),value=i==null?null:data[i];return value==null?{time:r.date}:{time:r.date,value};}));};
+    const titles={volume:"成交量（股）",macd:`MACD(${params.macd_fast},${params.macd_slow},${params.macd_signal})`,rsi:`RSI(${params.rsi_period})`,force:`Force Index EMA(${params.fi_ema})`,elder:`Elder-Ray EMA(${params.ema_period})`,stoch:`Stochastic(${params.stoch_k},${params.stoch_d})`};
+    const section=document.createElement("section");section.className=`subchart ${name==="volume"?"volume-subchart":""}`;const title=document.createElement("h3");title.textContent=titles[name];const canvas=document.createElement("div");canvas.className="canvas";section.append(title,canvas);$("subcharts").append(section);
+    const shareFormatter=(value)=>value>=100000000?`${(value/100000000).toFixed(2)} 亿股`:value>=10000?`${(value/10000).toFixed(2)} 万股`:`${Math.round(value)} 股`;
+    const chart=makeChart(canvas,name==="volume"?120:132,name==="volume"?shareFormatter:undefined);state.subcharts.push(chart);const plotRows=withWeekdayGaps(rows),dateIndex=new Map(rows.map((r,i)=>[r.date,i]));
+    let crosshairSeries=null,crosshairValues=new Map();
+    const add=(data,color,style=0)=>{const line=chart.addLineSeries({color,lineWidth:1,priceLineVisible:false,lastValueVisible:true,lineStyle:style});line.setData(plotRows.map((r)=>{const i=dateIndex.get(r.date),value=i==null?null:data[i];return value==null?{time:r.date}:{time:r.date,value};}));if(!crosshairSeries){crosshairSeries=line;crosshairValues=new Map(rows.map((row,i)=>[row.date,data[i]]));}return line;};
+    if(name==="volume"){
+      crosshairSeries=chart.addHistogramSeries({priceLineVisible:false,lastValueVisible:true,priceFormat:{type:"custom",minMove:1,formatter:shareFormatter}});
+      crosshairValues=new Map(rows.map((row)=>[row.date,row.volume]));
+      crosshairSeries.setData(plotRows.map((row)=>{const i=dateIndex.get(row.date);if(i==null)return{time:row.date};const current=rows[i];return{time:row.date,value:current.volume,color:current.close>=current.open?"#c73838":"#167a57"};}));
+    }
     if(name==="macd"){add(values.macd,"#315f7a");add(values.macdSignal,"#947020");const hist=chart.addHistogramSeries({priceLineVisible:false,lastValueVisible:true});hist.setData(plotRows.map((r)=>{const i=dateIndex.get(r.date),value=i==null?null:values.histogram[i];return value==null?{time:r.date}:{time:r.date,value,color:value>=0?"#c98181":"#67a78b"};}));}
     if(name==="rsi"){add(values.rsi,"#8a5d74");add(rows.map(()=>params.overbought),"#c6cece",2);add(rows.map(()=>params.oversold),"#c6cece",2);}
     if(name==="force")add(values.force,"#315f7a");
     if(name==="elder"){add(values.bull,"#c73838");add(values.bear,"#167a57");}
     if(name==="stoch"){add(values.stoch,"#315f7a");add(values.stochD,"#947020");add(rows.map(()=>params.overbought),"#c6cece",2);add(rows.map(()=>params.oversold),"#c6cece",2);}
+    registerSynchronizedPane(chart,crosshairSeries,crosshairValues);
   }
   function simpleMA(values,period){return values.map((_,i)=>i+1<period?null:values.slice(i+1-period,i+1).reduce((a,b)=>a+b,0)/period);}
   function withWeekdayGaps(rows){const byDate=new Map(rows.map((row)=>[row.date,row]));const result=[];const cursor=new Date(`${rows[0].date}T00:00:00Z`);const end=new Date(`${rows.at(-1).date}T00:00:00Z`);while(cursor<=end){const day=cursor.getUTCDay();const date=cursor.toISOString().slice(0,10);if(day!==0&&day!==6)result.push(byDate.get(date)||{date});cursor.setUTCDate(cursor.getUTCDate()+1);}return result;}
