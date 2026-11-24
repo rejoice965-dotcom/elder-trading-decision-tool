@@ -4,3 +4,7 @@ __pycache__/
 *.py[codc]
 .venv/
 data/cache/
+
+# local-only: book page photos must not be published
+/docs/book_photos/
+.DS_Store
