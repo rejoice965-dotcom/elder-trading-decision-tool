@@ -143,7 +143,7 @@
     const sourceIsToday=quote&&quote.sourceTime&&quote.sourceTime.slice(0,10)===shanghaiDate();
     const freshness=status==="error"?"error":status==="connected"&&quote?(sourceIsToday?"connected":"stale"):"";
     dot.className=`connection-dot ${freshness}`;
-    if(!quote){connection.textContent=status==="error"?"实时行情连接失败，正在重试":status;$("live-last").textContent="—";$("live-change").textContent="—";$("live-ohlc").textContent="开 —　高 —　低 —";$("live-volume").textContent="成交量 —";return;}
+    if(!quote){connection.textContent=status==="error"?"实时行情连接失败，正在重试":status;$("live-last").textContent="—";$("live-change").textContent="—";$("live-ohlc").textContent="开 —　高 —　低 —";$("live-volume").textContent="成交量 —";updateDecisionLivePrice();return;}
     $("live-last").textContent=`¥${quote.current.toFixed(2)}`;
     const change=$("live-change");change.textContent=`${quote.changePct>=0?"+":""}${quote.changePct.toFixed(2)}%`;change.className=`live-change ${quote.changePct>0?"live-up":quote.changePct<0?"live-down":""}`;
     $("live-ohlc").textContent=`开 ${fmt(quote.open)}　高 ${fmt(quote.high)}　低 ${fmt(quote.low)}`;
@@ -151,6 +151,14 @@
     const quoteState=sourceIsToday?"当日行情":status==="error"?"连接失败，保留上次行情":"行情源未更新（休市或延迟）";
     connection.textContent=`行情源时间 ${quote.sourceTime||"未提供"} · ${quoteState}`;
     $("live-refresh-time").textContent=`刷新于 ${formatBeijingTime(quote.fetchedAt)} 北京时间`;
+    updateDecisionLivePrice();
+  }
+  function updateDecisionLivePrice() {
+    const price=liveChartPrice();
+    $("decision-live-price").textContent=fmt(price);
+    const change=$("decision-live-change");
+    change.textContent=state.liveQuote?pct(state.liveQuote.changePct):"—";
+    change.className=`decision-live-change ${state.liveQuote&&state.liveQuote.changePct>0?"live-up":state.liveQuote&&state.liveQuote.changePct<0?"live-down":""}`;
   }
   function scheduleLiveQuote(code,requestId,delay) {
     clearTimeout(state.liveTimer);
@@ -184,6 +192,7 @@
     return rawClose&&qfqClose?state.liveQuote.current*qfqClose/rawClose:state.liveQuote.current;
   }
   function updateLivePriceLine() {
+    updateDecisionLivePrice();
     if(!state.series)return;
     if(state.livePriceLine){state.series.removePriceLine(state.livePriceLine);state.livePriceLine=null;}
     const price=liveChartPrice();

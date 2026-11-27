@@ -17,67 +17,98 @@
       <input id="symbol-input" value="600519.SH" autocomplete="off" spellcheck="false" aria-label="沪深股票代码">
       <button type="submit" id="query-button"><span aria-hidden="true">⌕</span> 查询</button>
     </form>
+    <div class="live-quote" aria-live="polite">
+      <div class="live-price" id="live-price"><span class="live-label">现价</span><strong id="live-last">等待行情</strong><span id="live-change" class="live-change">—</span></div>
+      <div class="live-status"><span id="live-connection" class="connection-dot"></span><span id="live-source-time">行情源时间等待中</span><span id="live-refresh-time"></span></div>
+    </div>
     <div class="top-note">仅供研究与回测，不构成投资建议</div>
   </header>
   <main>
     <div id="status-line" class="status-line" role="status">正在加载行情…</div>
-    <section class="decision-shell" aria-label="当前交易决策">
-      <div class="live-quote" aria-live="polite">
-        <div class="live-price" id="live-price"><span class="live-label">最新行情</span><strong id="live-last">等待行情</strong><span id="live-change" class="live-change">—</span></div>
-        <div class="live-details"><span id="live-ohlc">开 —　高 —　低 —</span><span id="live-volume">成交量 —</span></div>
-        <div class="live-status"><span id="live-connection" class="connection-dot"></span><span id="live-source-time">行情源时间等待中</span><span id="live-refresh-time"></span></div>
+    <nav class="section-nav" aria-label="页面导航">
+      <a href="#current-decision">当前决策</a>
+      <a href="#market-charts">行情图表</a>
+      <a href="#self-check">历史自检</a>
+    </nav>
+
+    <section class="decision-shell redesigned-shell" id="current-decision" aria-label="当前交易决策">
+      <div class="decision-workspace">
+        <header class="decision-header">
+          <p class="eyebrow">最新已收盘日线 · 三重滤网</p>
+          <div class="header-row-1">
+            <h1 id="stock-title">交易决策</h1>
+            <div class="decision-price-line"><strong id="decision-live-price">—</strong><span id="decision-live-change">—</span></div>
+          </div>
+          <div class="header-row-2"><span id="quote-meta" class="quote-meta"></span><span id="live-ohlc" class="live-details">开 —　高 —　低 —</span><span id="live-volume" class="live-details">成交量 —</span></div>
+        </header>
+
+        <section class="charts" id="market-charts" aria-label="行情图表">
+          <div class="chart-toolbar">
+            <div><p class="eyebrow">行情与指标</p><h2>K 线走势图</h2></div>
+            <div class="chart-controls">
+              <label>价格口径<select id="track-select"><option value="qfq">前复权</option><option value="raw">不复权</option></select></label>
+              <label>主图<select id="overlay-select"><option value="ma">MA</option><option value="ema">EMA</option><option value="boll">BOLL</option><option value="none">不显示</option></select></label>
+              <label>显示买卖点<input type="checkbox" id="markers-toggle" checked></label>
+            </div>
+          </div>
+          <div id="overlay-params" class="overlay-params"></div>
+          <div id="overlay-legend" class="overlay-legend" aria-live="polite"></div>
+          <div id="price-chart" class="price-chart"><div id="chart-tooltip" class="chart-tooltip"></div></div>
+          <div id="subchart-controls" class="subchart-controls"></div>
+          <div id="subcharts" class="subcharts"></div>
+        </section>
+
+        <section class="decision-assessment" aria-label="交易结论">
+          <h2>交易结论</h2>
+          <div class="assessment-row">
+            <div class="decision-state state-wait" id="decision-state"><b>WAIT</b><span>观望</span></div>
+            <p id="decision-reason" class="decision-reason">等待行情数据</p>
+          </div>
+          <div id="gate-strip" class="gate-strip"></div>
+        </section>
+
+        <div class="decision-content">
+          <section class="analysis-panel" aria-label="建议理由与交易计划">
+            <section class="rationale" aria-label="交易建议理由">
+              <h2>建议理由</h2>
+              <div id="rationale-content" class="rationale-grid"></div>
+            </section>
+            <section class="trade-plan">
+              <div class="plan-heading"><h2>交易计划</h2><span id="plan-eligibility" class="eligibility"></span></div>
+              <div class="plan-grid">
+                <div class="plan-field"><span id="entry-label">候选入场</span><strong id="plan-entry">—</strong><small id="entry-note"></small></div>
+                <div class="plan-field"><span id="stop-label">保护性止损</span><strong id="plan-stop">—</strong><small id="stop-note"></small></div>
+                <div class="plan-field"><span>参考目标位</span><strong id="plan-target">—</strong><small>长期结构参考，需人工判断</small></div>
+                <div class="plan-field"><span>计划股数</span><strong id="plan-shares">—</strong><small id="shares-note">按 100 股整手向下取整</small></div>
+              </div>
+            </section>
+          </section>
+
+          <aside class="decision-aside">
+            <section class="risk-panel" aria-label="风险控制">
+              <h2>风险控制</h2>
+              <div class="risk-controls">
+                <label>账户权益 <span>¥</span><input id="equity-input" type="number" min="0" step="1000" value="100000"></label>
+                <label>本月净值回撤额 <span>¥</span><input id="monthly-used" type="number" min="0" step="1000" value="0"></label>
+                <span id="risk-math" class="risk-math">2% 风险预算：¥2,000</span>
+                <span id="monthly-status" class="monthly-status">6% 月度风控：未触发</span>
+              </div>
+              <div class="risk-rules"><span id="protect-rule"></span><span id="cash-warning"></span><span id="trade-warning"></span></div>
+            </section>
+            <details class="evidence" open>
+              <summary>判断依据 <span id="evidence-summary"></span></summary>
+              <div id="evidence-chain" class="evidence-chain"></div>
+            </details>
+          </aside>
+        </div>
       </div>
-      <div class="decision-heading">
-        <div><p class="eyebrow">最新已收盘日线 · 三重滤网</p><h1 id="stock-title">交易决策</h1><div id="quote-meta" class="quote-meta"></div></div>
-        <div class="decision-state state-wait" id="decision-state"><b>WAIT</b><span>观望</span></div>
-      </div>
-      <p id="decision-reason" class="decision-reason">等待行情数据</p>
-      <div id="gate-strip" class="gate-strip"></div>
-      <section class="rationale" aria-label="交易建议理由">
-        <h2>建议理由</h2>
-        <div id="rationale-content" class="rationale-grid"></div>
-      </section>
-      <div class="plan-heading"><h2>交易计划</h2><span id="plan-eligibility" class="eligibility"></span></div>
-      <div class="plan-grid">
-        <div class="plan-field"><span id="entry-label">候选入场</span><strong id="plan-entry">—</strong><small id="entry-note"></small></div>
-        <div class="plan-field"><span id="stop-label">保护性止损</span><strong id="plan-stop">—</strong><small id="stop-note"></small></div>
-        <div class="plan-field"><span>参考目标位</span><strong id="plan-target">—</strong><small>长期结构参考，需人工判断</small></div>
-        <div class="plan-field"><span>计划股数</span><strong id="plan-shares">—</strong><small id="shares-note">按 100 股整手向下取整</small></div>
-      </div>
-      <div class="risk-controls">
-        <label>账户权益 <span>¥</span><input id="equity-input" type="number" min="0" step="1000" value="100000"></label>
-        <label>本月净值回撤额 <span>¥</span><input id="monthly-used" type="number" min="0" step="1000" value="0"></label>
-        <span id="risk-math" class="risk-math">2% 风险预算：¥2,000</span>
-        <span id="monthly-status" class="monthly-status">6% 月度风控：未触发</span>
-      </div>
-      <div class="risk-rules"><span id="protect-rule"></span><span id="cash-warning"></span><span id="trade-warning"></span></div>
-      <details class="evidence" open>
-        <summary>判断依据链 <span id="evidence-summary"></span></summary>
-        <div id="evidence-chain" class="evidence-chain"></div>
-      </details>
+      <div class="data-footnote">最新价每 5 秒轮询（交易时段），休市时每 30 秒检查；数据新鲜度以“行情源时间”为准。技术指标和买卖判断基于最近已收盘 K 线。成交量原始单位为手，已换算为股。线上指标基于腾讯前复权口径，与项目回测缓存（akshare 前复权）可能存在细微差异；判定阈值（30/70、突破价）不受影响。沪深股票涨红跌绿。缺少行情的工作日留白（可能为停牌或非交易日）。A 股 T+1，普通股票买入后下一交易日方可卖出。</div>
     </section>
 
-    <section class="self-check" aria-label="历史规则自检">
+    <section class="self-check" id="self-check" aria-label="历史规则自检">
       <div class="section-head"><div><p class="eyebrow">仅作规则自检，不代表未来表现</p><h2>近 250 个交易日历史自检</h2></div><span id="history-horizon">次日开盘买入 · 持有 5 个交易日</span></div>
       <div id="history-metrics" class="history-metrics"><div>等待行情</div></div>
       <p id="history-method" class="muted">长仓仅；重叠信号分别计量；收益不含费用、滑点、涨跌停及 T+1 无法成交影响。</p>
-    </section>
-
-    <section class="charts" aria-label="辅助行情图表">
-      <div class="chart-toolbar">
-        <div><p class="eyebrow">辅助核对视图</p><h2>行情与指标</h2></div>
-        <div class="chart-controls">
-          <label>价格口径<select id="track-select"><option value="qfq">前复权</option><option value="raw">不复权</option></select></label>
-          <label>主图<select id="overlay-select"><option value="ma">MA</option><option value="ema">EMA</option><option value="boll">BOLL</option><option value="none">不显示</option></select></label>
-          <label>显示买卖点<input type="checkbox" id="markers-toggle" checked></label>
-        </div>
-      </div>
-      <div id="overlay-params" class="overlay-params"></div>
-      <div id="overlay-legend" class="overlay-legend" aria-live="polite"></div>
-      <div id="price-chart" class="price-chart"><div id="chart-tooltip" class="chart-tooltip"></div></div>
-      <div id="subchart-controls" class="subchart-controls"></div>
-      <div id="subcharts" class="subcharts"></div>
-      <div class="data-footnote">最新价每 5 秒轮询（交易时段），休市时每 30 秒检查；数据新鲜度以“行情源时间”为准。技术指标和买卖判断基于最近已收盘 K 线。成交量原始单位为手，已换算为股。线上指标基于腾讯前复权口径，与项目回测缓存（akshare 前复权）可能存在细微差异；判定阈值（30/70、突破价）不受影响。沪深股票涨红跌绿。缺少行情的工作日留白（可能为停牌或非交易日）。A 股 T+1，普通股票买入后下一交易日方可卖出。</div>
     </section>
     <section class="provenance-note">依据：公开资料交叉核对，非原书直引</section>
   </main>
